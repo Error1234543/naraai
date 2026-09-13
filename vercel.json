@@ -12,8 +12,13 @@
       "dest": "/api.js"
     },
     {
+      "src": "/api/(.*)",
+      "dest": "/api.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ]
+  ],
+  "public": true
 }
