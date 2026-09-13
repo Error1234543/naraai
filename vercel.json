@@ -4,10 +4,6 @@
     {
       "src": "api.js",
       "use": "@vercel/node"
-    },
-    {
-      "src": "sonic-ai-agnes.html",
-      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -17,10 +13,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/sonic-ai-agnes.html"
+      "dest": "/index.html"
     }
-  ],
-  "env": {
-    "AGNES_API_KEY": "@agnes_api_key"
-  }
+  ]
 }
