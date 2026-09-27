@@ -6,8 +6,8 @@ const {
   requireOwner
 } = require('./middleware/auth');
 
-const { handleChat } = require('./nara');
-const { handleZip } = require('./projects');
+const { handleChat } = require('./providers/nara');
+const { handleZip } = require('./projects/zip');
 const { getModels } = require('./models');
 
 // Load environment variables for local development
@@ -17,14 +17,19 @@ if (process.env.NODE_ENV !== 'production') {
 
 const app = express();
 
-// CORS
+// ==========================================
+// MIDDLEWARE
+// ==========================================
+
 app.use(cors());
 
-// JSON body limit
-app.use(express.json({ limit: '50mb' }));
+app.use(
+  express.json({
+    limit: '50mb'
+  })
+);
 
 const router = express.Router();
-
 
 // ==========================================
 // HEALTH CHECK
@@ -39,13 +44,11 @@ router.get('/health', (req, res) => {
   });
 });
 
-
 // ==========================================
 // MODEL LIST
 // ==========================================
 
 router.get('/models', getModels);
-
 
 // ==========================================
 // AI CHAT
@@ -57,7 +60,6 @@ router.post(
   handleChat
 );
 
-
 // ==========================================
 // PROJECT / ZIP GENERATION
 // ==========================================
@@ -67,7 +69,6 @@ router.post(
   requireOwner,
   handleZip
 );
-
 
 // ==========================================
 // CHAT DATABASE STUBS
@@ -93,13 +94,11 @@ router.post(
   }
 );
 
-
 // ==========================================
 // API ROUTES
 // ==========================================
 
 app.use('/api', router);
-
 
 // ==========================================
 // ERROR HANDLER
@@ -107,10 +106,12 @@ app.use('/api', router);
 
 app.use(errorHandler);
 
-
 // ==========================================
 // SERVER
 // ==========================================
+
+// Render provides PORT automatically.
+// Vercel uses the exported Express app.
 
 if (!process.env.VERCEL) {
   const PORT = process.env.PORT || 3000;
@@ -119,7 +120,6 @@ if (!process.env.VERCEL) {
     console.log(`SONIC AI backend running on port ${PORT}`);
   });
 }
-
 
 // ==========================================
 // EXPORT
