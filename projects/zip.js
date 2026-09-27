@@ -11,7 +11,10 @@ if (files.length > 500) {
 return next(createError('LIMIT_EXCEEDED', 'Project file count exceeds safety limits.', 400));
 }
 res.setHeader('Content-Type', 'application/zip');
-res.setHeader('Content-Disposition', attachment; filename="${projectName}.zip");
+res.setHeader(
+  'Content-Disposition',
+  `attachment; filename="${projectName}.zip"`
+);
 const archive = archiver('zip', { zlib: { level: 9 } });
 archive.on('error', (err) => {
 console.error('ZIP compilation error:', err);
