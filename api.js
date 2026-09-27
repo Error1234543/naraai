@@ -4,7 +4,7 @@ const cors = require('cors');
 const {
   errorHandler,
   requireOwner
-} = require('./middleware');
+} = require('./middleware/auth');
 
 const { handleChat } = require('./nara');
 const { handleZip } = require('./projects');
@@ -20,7 +20,7 @@ const app = express();
 // CORS
 app.use(cors());
 
-// JSON body limit for AI payloads, files and attachments
+// JSON body limit
 app.use(express.json({ limit: '50mb' }));
 
 const router = express.Router();
@@ -111,8 +111,6 @@ app.use(errorHandler);
 // ==========================================
 // SERVER
 // ==========================================
-// Render provides PORT automatically.
-// Vercel does not need app.listen().
 
 if (!process.env.VERCEL) {
   const PORT = process.env.PORT || 3000;
