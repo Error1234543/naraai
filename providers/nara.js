@@ -1,5 +1,4 @@
-const { createError } = require('./middleware');
-
+const { createError } = require('../middleware/auth');
 const NARA_ROUTER = 'https://router.bynara.id/v1/chat/completions';
 
 // Multi-Model Routing & Streaming
