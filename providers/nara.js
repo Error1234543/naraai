@@ -10,8 +10,7 @@ const response = await fetch(NARA_ROUTER, {
 method: 'POST',
 headers: {
 'Content-Type': 'application/json',
-'Authorization': Bearer ${apiKey}
-},
+'Authorization': `Bearer ${apiKey}`
 body: JSON.stringify({ messages, model, temperature, max_tokens, stream })
 });
 // Error Normalization mapping
