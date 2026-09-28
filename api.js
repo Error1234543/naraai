@@ -1,128 +1,70 @@
-const express = require('express');
-const cors = require('cors');
+// Vercel Serverless Function
+// No installation needed - just deploy to Vercel!
 
-const {
-  errorHandler,
-  requireOwner
-} = require('./middleware/auth');
+const axios = require('axios');
 
-const { handleChat } = require('./providers/nara');
-const { handleZip } = require('./projects/zip');
-const { getModels } = require('./models');
+const API_KEY = process.env.AGNES_API_KEY || 'YOUR_API_KEY_HERE';
+const API_BASE_URL = 'https://router.bynara.id/v1';
 
-// Load environment variables for local development
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
-}
+module.exports = async (req, res) => {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
-const app = express();
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
 
-// ==========================================
-// MIDDLEWARE
-// ==========================================
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-app.use(cors());
+  try {
+    const { messages, model, temperature, max_tokens } = req.body;
 
-app.use(
-  express.json({
-    limit: '50mb'
-  })
-);
+    if (!messages) {
+      return res.status(400).json({ error: 'messages required' });
+    }
 
-const router = express.Router();
+    console.log(`[${new Date().toISOString()}] API Request:`, {
+      model: model || 'agnes-2.5-flash',
+      messageCount: messages.length
+    });
 
-// ==========================================
-// HEALTH CHECK
-// ==========================================
+    const response = await axios.post(
+      `${API_BASE_URL}/chat/completions`,
+      {
+        model: model || 'agnes-2.5-flash',
+        messages: messages,
+        temperature: temperature || 0.7,
+        max_tokens: max_tokens || 2048,
+        stream: false
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 180000
+      }
+    );
 
-router.get('/health', (req, res) => {
-  res.json({
-    ok: true,
-    service: 'sonic-ai-api',
-    version: '1.0.0',
-    provider: 'nara'
-  });
-});
+    return res.status(200).json(response.data);
 
-// ==========================================
-// MODEL LIST
-// ==========================================
+  } catch (error) {
+    console.error('API Error:', error.message);
 
-router.get('/models', getModels);
+    if (error.response) {
+      return res.status(error.response.status).json({
+        error: error.response.data || error.message
+      });
+    }
 
-// ==========================================
-// AI CHAT
-// ==========================================
-
-router.post(
-  '/chat',
-  requireOwner,
-  handleChat
-);
-
-// ==========================================
-// PROJECT / ZIP GENERATION
-// ==========================================
-
-router.post(
-  '/projects/zip',
-  requireOwner,
-  handleZip
-);
-
-// ==========================================
-// CHAT DATABASE STUBS
-// ==========================================
-
-router.get(
-  '/chats',
-  requireOwner,
-  (req, res) => {
-    res.json({
-      chats: []
+    return res.status(500).json({
+      error: error.message || 'Internal server error'
     });
   }
-);
-
-router.post(
-  '/chats',
-  requireOwner,
-  (req, res) => {
-    res.json({
-      id: 'new-chat-id'
-    });
-  }
-);
-
-// ==========================================
-// API ROUTES
-// ==========================================
-
-app.use('/api', router);
-
-// ==========================================
-// ERROR HANDLER
-// ==========================================
-
-app.use(errorHandler);
-
-// ==========================================
-// SERVER
-// ==========================================
-
-// Render provides PORT automatically.
-// Vercel uses the exported Express app.
-
-if (!process.env.VERCEL) {
-  const PORT = process.env.PORT || 3000;
-
-  app.listen(PORT, () => {
-    console.log(`SONIC AI backend running on port ${PORT}`);
-  });
-}
-
-// ==========================================
-// EXPORT
-// ==========================================
-
-module.exports = app;
+};
