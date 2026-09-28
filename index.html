@@ -1,0 +1,3394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#070b18" />
+<meta name="description" content="SONIC AI — a fast, private AI assistant." />
+<title>SONIC AI</title>
+<style>
+/* ==========================================================================
+   SONIC AI — design tokens
+   ========================================================================== */
+:root{
+  --bg:            #070b18;
+  --bg-2:          #0a1024;
+  --panel:         rgba(20, 27, 51, .62);
+  --panel-solid:   #121a33;
+  --panel-2:       rgba(28, 36, 66, .55);
+  --stroke:        rgba(140, 160, 220, .14);
+  --stroke-strong: rgba(150, 170, 235, .26);
+  --text:          #e9edf9;
+  --text-dim:      #9aa6c9;
+  --text-faint:    #6b7699;
+  --accent:        #6d8cff;
+  --accent-2:      #9b7bff;
+  --accent-soft:   rgba(109, 140, 255, .16);
+  --danger:        #ff6b81;
+  --ok:            #4fd6a8;
+  --radius:        18px;
+  --radius-sm:     12px;
+  --radius-lg:     26px;
+  --shadow:        0 18px 50px rgba(0, 0, 0, .45);
+  --shadow-sm:     0 6px 20px rgba(0, 0, 0, .3);
+  --header-h:      62px;
+  --sidebar-w:     286px;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+          "Liberation Mono", monospace;
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+
+html,body{
+  height:100%;
+  margin:0;
+  padding:0;
+}
+
+html{ -webkit-text-size-adjust:100%; }
+
+body{
+  font-family:var(--font);
+  color:var(--text);
+  background:var(--bg);
+  /* never allow sideways scroll anywhere */
+  overflow-x:hidden;
+  overscroll-behavior-y:none;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/* ambient background glow — subtle, not a gradient soup */
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  background:
+    radial-gradient(900px 520px at 12% -8%,  rgba(109,140,255,.16), transparent 62%),
+    radial-gradient(760px 460px at 92% 4%,   rgba(155,123,255,.13), transparent 60%),
+    radial-gradient(700px 700px at 50% 118%, rgba(93,120,225,.10), transparent 62%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+}
+
+button{ font-family:inherit; font-size:inherit; color:inherit; }
+input,textarea{ font-family:inherit; font-size:inherit; color:inherit; }
+
+/* keyboard focus only — no ugly outlines on mouse clicks */
+:focus{ outline:none; }
+:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+  border-radius:8px;
+}
+
+::selection{ background:rgba(109,140,255,.32); }
+
+/* slim scrollbars */
+*::-webkit-scrollbar{ width:9px; height:9px; }
+*::-webkit-scrollbar-track{ background:transparent; }
+*::-webkit-scrollbar-thumb{
+  background:rgba(150,168,225,.17);
+  border-radius:9px;
+  border:2px solid transparent;
+  background-clip:content-box;
+}
+*::-webkit-scrollbar-thumb:hover{ background:rgba(150,168,225,.3); background-clip:content-box; }
+
+/* ==========================================================================
+   Shell
+   ========================================================================== */
+.app{
+  display:flex;
+  height:100vh;
+  height:100dvh;
+  width:100%;
+  overflow:hidden;
+}
+
+/* ==========================================================================
+   Sidebar
+   ========================================================================== */
+.sidebar{
+  width:var(--sidebar-w);
+  flex:0 0 var(--sidebar-w);
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  padding:16px 14px;
+  background:linear-gradient(180deg, rgba(16,22,44,.86), rgba(10,15,32,.86));
+  backdrop-filter:blur(22px) saturate(160%);
+  -webkit-backdrop-filter:blur(22px) saturate(160%);
+  border-right:1px solid var(--stroke);
+  z-index:60;
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  padding:6px 8px 14px;
+  min-width:0;
+}
+.brand-mark{
+  width:34px; height:34px;
+  flex:0 0 34px;
+  border-radius:11px;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(140deg, var(--accent), var(--accent-2));
+  box-shadow:0 6px 18px rgba(109,140,255,.34);
+}
+.brand-mark svg{ width:19px; height:19px; display:block; }
+.brand-name{
+  font-size:16.5px;
+  font-weight:750;
+  letter-spacing:.13em;
+  white-space:nowrap;
+}
+.brand-sub{
+  font-size:10.5px;
+  color:var(--text-faint);
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  margin-top:1px;
+}
+
+.side-btn{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  width:100%;
+  padding:12px 13px;
+  border:1px solid var(--stroke-strong);
+  border-radius:var(--radius-sm);
+  background:var(--accent-soft);
+  cursor:pointer;
+  font-size:14.5px;
+  font-weight:600;
+  text-align:left;
+  transition:background .18s ease, border-color .18s ease, transform .12s ease;
+}
+.side-btn:hover{ background:rgba(109,140,255,.25); border-color:rgba(150,170,235,.4); }
+.side-btn:active{ transform:scale(.985); }
+.side-btn svg{ width:17px; height:17px; flex:0 0 17px; }
+
+.side-label{
+  font-size:10.5px;
+  font-weight:700;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--text-faint);
+  padding:4px 8px 0;
+}
+
+.history{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  margin:0 -4px;
+  padding:0 4px;
+}
+.history-empty{
+  color:var(--text-faint);
+  font-size:13px;
+  padding:10px 8px;
+  line-height:1.5;
+}
+
+.hist-item{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:10px 30px 10px 11px;
+  border-radius:11px;
+  border:1px solid transparent;
+  cursor:pointer;
+  min-width:0;
+  transition:background .16s ease, border-color .16s ease;
+}
+.hist-item:hover{ background:rgba(140,160,220,.09); }
+.hist-item.active{
+  background:rgba(109,140,255,.15);
+  border-color:rgba(109,140,255,.3);
+}
+.hist-item svg{ width:14px; height:14px; flex:0 0 14px; opacity:.62; }
+.hist-title{
+  flex:1 1 auto;
+  min-width:0;
+  font-size:13.5px;
+  color:var(--text-dim);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.hist-item.active .hist-title{ color:var(--text); font-weight:600; }
+
+.hist-del{
+  position:absolute;
+  right:5px; top:50%;
+  transform:translateY(-50%);
+  width:24px; height:24px;
+  display:none;
+  place-items:center;
+  border:0; border-radius:7px;
+  background:transparent;
+  color:var(--text-faint);
+  cursor:pointer;
+  padding:0;
+}
+.hist-item:hover .hist-del,
+.hist-item.active .hist-del{ display:grid; }
+.hist-del:hover{ background:rgba(255,107,129,.16); color:var(--danger); }
+.hist-del svg{ width:13px; height:13px; }
+
+.side-foot{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  border-top:1px solid var(--stroke);
+  padding-top:11px;
+}
+.foot-item{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  width:100%;
+  padding:10px 11px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:var(--text-dim);
+  cursor:pointer;
+  font-size:13.5px;
+  text-align:left;
+  transition:background .16s ease, color .16s ease;
+}
+.foot-item:hover{ background:rgba(140,160,220,.09); color:var(--text); }
+.foot-item svg{ width:16px; height:16px; flex:0 0 16px; opacity:.8; }
+
+.scrim{
+  position:fixed;
+  inset:0;
+  z-index:55;
+  background:rgba(3,6,15,.62);
+  backdrop-filter:blur(3px);
+  -webkit-backdrop-filter:blur(3px);
+  opacity:0;
+  visibility:hidden;
+  transition:opacity .24s ease, visibility .24s ease;
+}
+.scrim.show{ opacity:1; visibility:visible; }
+
+/* ==========================================================================
+   Main column
+   ========================================================================== */
+.main{
+  flex:1 1 auto;
+  min-width:0;                 /* critical: keeps flex children from overflowing */
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  position:relative;
+}
+
+/* ---------- header ---------- */
+.header{
+  flex:0 0 auto;
+  height:var(--header-h);
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:0 14px;
+  background:rgba(10,15,32,.66);
+  backdrop-filter:blur(20px) saturate(160%);
+  -webkit-backdrop-filter:blur(20px) saturate(160%);
+  border-bottom:1px solid var(--stroke);
+  z-index:30;
+}
+.icon-btn{
+  width:38px; height:38px;
+  flex:0 0 38px;
+  display:grid;
+  place-items:center;
+  border:1px solid var(--stroke);
+  border-radius:11px;
+  background:rgba(140,160,220,.07);
+  color:var(--text-dim);
+  cursor:pointer;
+  padding:0;
+  transition:background .16s ease, color .16s ease, border-color .16s ease;
+}
+.icon-btn:hover{ background:rgba(140,160,220,.14); color:var(--text); border-color:var(--stroke-strong); }
+.icon-btn:active{ transform:scale(.95); }
+.icon-btn svg{ width:17px; height:17px; }
+
+.menu-btn{ display:none; }      /* only on mobile */
+
+.head-title{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  flex:1 1 auto;
+}
+.head-title h1{
+  margin:0;
+  font-size:17px;
+  font-weight:750;
+  letter-spacing:.15em;
+  white-space:nowrap;
+}
+.head-title span{
+  font-size:10.5px;
+  color:var(--text-faint);
+  letter-spacing:.09em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.model-chip{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  max-width:44vw;
+  padding:7px 12px;
+  border:1px solid var(--stroke);
+  border-radius:999px;
+  background:rgba(140,160,220,.07);
+  font-size:12px;
+  color:var(--text-dim);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.model-dot{
+  width:7px; height:7px;
+  flex:0 0 7px;
+  border-radius:50%;
+  background:var(--ok);
+  box-shadow:0 0 9px rgba(79,214,168,.75);
+}
+.model-chip.busy .model-dot{
+  background:var(--accent);
+  box-shadow:0 0 9px rgba(109,140,255,.85);
+  animation:pulse 1.15s ease-in-out infinite;
+}
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.28;} }
+
+/* ---------- scroll region ---------- */
+.scroll{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  scroll-behavior:smooth;
+  overscroll-behavior:contain;
+}
+
+.thread{
+  width:100%;
+  max-width:840px;
+  margin:0 auto;
+  padding:22px 16px 12px;
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+/* `display` here beats the UA rule for [hidden], so restate it */
+.thread[hidden],
+.empty[hidden]{ display:none !important; }
+
+/* ---------- empty state ---------- */
+.empty{
+  min-height:calc(100dvh - var(--header-h) - 190px);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:34px 20px;
+  gap:14px;
+}
+.empty-mark{
+  width:66px; height:66px;
+  border-radius:20px;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(140deg, rgba(109,140,255,.24), rgba(155,123,255,.2));
+  border:1px solid var(--stroke-strong);
+  box-shadow:0 14px 40px rgba(109,140,255,.22);
+}
+.empty-mark svg{ width:31px; height:31px; }
+.empty h2{
+  margin:6px 0 0;
+  font-size:26px;
+  font-weight:750;
+  letter-spacing:.02em;
+}
+.empty p{
+  margin:0;
+  color:var(--text-dim);
+  font-size:14.5px;
+  max-width:420px;
+  line-height:1.6;
+}
+.suggest{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:center;
+  margin-top:14px;
+  max-width:560px;
+}
+.suggest button{
+  padding:9px 14px;
+  border:1px solid var(--stroke);
+  border-radius:999px;
+  background:rgba(140,160,220,.06);
+  color:var(--text-dim);
+  font-size:12.5px;
+  cursor:pointer;
+  transition:background .16s ease, color .16s ease, border-color .16s ease;
+}
+.suggest button:hover{ background:rgba(109,140,255,.16); color:var(--text); border-color:rgba(109,140,255,.34); }
+
+/* ---------- messages ---------- */
+.msg{
+  display:flex;
+  flex-direction:column;
+  max-width:100%;
+  animation:rise .3s cubic-bezier(.2,.7,.3,1) both;
+}
+@keyframes rise{
+  from{ opacity:0; transform:translateY(9px); }
+  to  { opacity:1; transform:translateY(0); }
+}
+@media (prefers-reduced-motion: reduce){
+  .msg{ animation:none; }
+  .scroll{ scroll-behavior:auto; }
+  .dots span{ animation:none !important; }
+}
+
+.msg.user{ align-items:flex-end; }
+.msg.ai{ align-items:flex-start; }
+
+.bubble{
+  max-width:min(100%, 660px);
+  min-width:0;
+  padding:13px 16px;
+  border-radius:var(--radius);
+  font-size:14.6px;
+  line-height:1.68;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+.msg.user .bubble{
+  background:linear-gradient(150deg, rgba(109,140,255,.26), rgba(155,123,255,.2));
+  border:1px solid rgba(140,165,255,.3);
+  border-bottom-right-radius:7px;
+  white-space:pre-wrap;
+}
+.msg.ai .bubble{
+  background:var(--panel);
+  backdrop-filter:blur(16px) saturate(150%);
+  -webkit-backdrop-filter:blur(16px) saturate(150%);
+  border:1px solid var(--stroke);
+  border-bottom-left-radius:7px;
+  box-shadow:var(--shadow-sm);
+}
+.msg.error .bubble{
+  border-color:rgba(255,107,129,.36);
+  background:rgba(255,107,129,.09);
+}
+
+.bubble p{ margin:0 0 .72em; }
+.bubble p:last-child{ margin-bottom:0; }
+.bubble pre{
+  margin:.7em 0;
+  padding:12px 13px;
+  border-radius:12px;
+  border:1px solid var(--stroke);
+  background:rgba(6,10,22,.72);
+  overflow-x:auto;
+  max-width:100%;
+}
+.bubble pre code{
+  font-family:var(--mono);
+  font-size:12.7px;
+  line-height:1.6;
+  background:none;
+  padding:0;
+  white-space:pre;
+}
+.bubble code{
+  font-family:var(--mono);
+  font-size:12.9px;
+  padding:2px 5px;
+  border-radius:6px;
+  background:rgba(140,160,220,.13);
+}
+.bubble a{ color:#9db4ff; text-underline-offset:2px; }
+
+/* thinking (reasoning) block for the Thinking model */
+.think{
+  margin:0 0 9px;
+  border:1px solid var(--stroke);
+  border-radius:12px;
+  background:rgba(10,16,34,.5);
+  overflow:hidden;
+}
+.think summary{
+  cursor:pointer;
+  padding:8px 12px;
+  font-size:11.6px;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  color:var(--text-faint);
+  list-style:none;
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.think summary::-webkit-details-marker{ display:none; }
+.think summary::before{
+  content:"";
+  width:5px; height:5px;
+  border-radius:50%;
+  background:var(--accent-2);
+  box-shadow:0 0 7px rgba(155,123,255,.8);
+}
+.think[open] summary{ border-bottom:1px solid var(--stroke); }
+.think-body{
+  padding:10px 12px;
+  font-size:13px;
+  line-height:1.62;
+  color:var(--text-dim);
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  max-height:290px;
+  overflow-y:auto;
+}
+
+/* AI footer actions */
+.msg-actions{
+  display:flex;
+  align-items:center;
+  gap:3px;
+  margin-top:6px;
+  opacity:0;
+  transition:opacity .18s ease;
+}
+.msg.ai:hover .msg-actions,
+.msg.ai:focus-within .msg-actions,
+.msg-actions.always{ opacity:1; }
+@media (hover:none){ .msg-actions{ opacity:1; } }
+.act{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 9px;
+  border:0;
+  border-radius:9px;
+  background:transparent;
+  color:var(--text-faint);
+  font-size:12px;
+  cursor:pointer;
+  transition:background .15s ease, color .15s ease;
+}
+.act:hover{ background:rgba(140,160,220,.12); color:var(--text); }
+.act.done{ color:var(--ok); }
+.act svg{ width:13.5px; height:13.5px; }
+
+/* typing indicator */
+.typing{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:15px 17px;
+}
+.dots{ display:flex; gap:5px; }
+.dots span{
+  width:7px; height:7px;
+  border-radius:50%;
+  background:var(--accent);
+  opacity:.55;
+  animation:bounce 1.3s ease-in-out infinite;
+}
+.dots span:nth-child(2){ animation-delay:.16s; }
+.dots span:nth-child(3){ animation-delay:.32s; }
+@keyframes bounce{
+  0%,60%,100%{ transform:translateY(0); opacity:.45; }
+  30%{ transform:translateY(-4px); opacity:1; }
+}
+.typing-note{
+  font-size:12.4px;
+  color:var(--text-faint);
+  margin-left:4px;
+}
+
+.cursor{
+  display:inline-block;
+  width:7px; height:15px;
+  vertical-align:-2px;
+  margin-left:2px;
+  background:var(--accent);
+  border-radius:1.5px;
+  animation:blink 1s steps(2,start) infinite;
+}
+@keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+/* ==========================================================================
+   Composer
+   ========================================================================== */
+.composer-wrap{
+  flex:0 0 auto;
+  padding:8px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  background:linear-gradient(180deg, rgba(7,11,24,0), rgba(7,11,24,.86) 42%);
+}
+.composer{
+  width:100%;
+  max-width:840px;
+  margin:0 auto;
+}
+.input-shell{
+  display:flex;
+  align-items:flex-end;
+  gap:8px;
+  padding:9px 9px 9px 15px;
+  border:1px solid var(--stroke-strong);
+  border-radius:var(--radius-lg);
+  background:var(--panel);
+  backdrop-filter:blur(20px) saturate(160%);
+  -webkit-backdrop-filter:blur(20px) saturate(160%);
+  box-shadow:var(--shadow);
+  transition:border-color .18s ease, box-shadow .18s ease;
+}
+.input-shell:focus-within{
+  border-color:rgba(109,140,255,.55);
+  box-shadow:0 18px 50px rgba(0,0,0,.45), 0 0 0 3px rgba(109,140,255,.12);
+}
+#input{
+  flex:1 1 auto;
+  min-width:0;
+  max-height:190px;
+  padding:9px 0;
+  border:0;
+  background:transparent;
+  resize:none;
+  line-height:1.55;
+  font-size:15px;
+  overflow-y:auto;
+}
+#input::placeholder{ color:var(--text-faint); }
+
+.send-btn{
+  width:40px; height:40px;
+  flex:0 0 40px;
+  display:grid;
+  place-items:center;
+  border:0;
+  border-radius:50%;
+  background:linear-gradient(140deg, var(--accent), var(--accent-2));
+  color:#fff;
+  cursor:pointer;
+  padding:0;
+  box-shadow:0 7px 20px rgba(109,140,255,.34);
+  transition:transform .13s ease, opacity .16s ease, box-shadow .16s ease;
+}
+.send-btn svg{ width:18px; height:18px; }
+.send-btn:hover:not(:disabled){ transform:scale(1.06); }
+.send-btn:active:not(:disabled){ transform:scale(.94); }
+.send-btn:disabled{
+  opacity:.36;
+  cursor:not-allowed;
+  box-shadow:none;
+}
+.send-btn.stop{
+  background:linear-gradient(140deg, #ff7a8c, #ff5f7a);
+  box-shadow:0 7px 20px rgba(255,107,129,.34);
+}
+.send-btn.stop svg{ width:15px; height:15px; }
+
+.hint{
+  text-align:center;
+  font-size:11.3px;
+  color:var(--text-faint);
+  margin:9px 0 0;
+  line-height:1.5;
+}
+.hint kbd{
+  font-family:var(--mono);
+  font-size:10.5px;
+  padding:1.5px 5px;
+  border:1px solid var(--stroke);
+  border-radius:5px;
+  background:rgba(140,160,220,.1);
+}
+
+/* ---------- attachments in the composer ---------- */
+.attach-btn{
+  width:34px; height:34px;
+  flex:0 0 34px;
+  display:grid;
+  place-items:center;
+  margin-bottom:3px;
+  border:0;
+  border-radius:50%;
+  background:transparent;
+  color:var(--text-faint);
+  cursor:pointer;
+  padding:0;
+  transition:background .16s ease, color .16s ease, transform .12s ease;
+}
+.attach-btn:hover{ background:rgba(140,160,220,.14); color:var(--text); }
+.attach-btn:active{ transform:scale(.92); }
+.attach-btn svg{ width:18px; height:18px; }
+.attach-btn:disabled{ opacity:.35; cursor:not-allowed; }
+
+.previews{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  padding:0 2px 10px;
+}
+.previews[hidden]{ display:none !important; }
+
+.preview{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  max-width:100%;
+  min-width:0;
+  padding:7px 30px 7px 7px;
+  border:1px solid var(--stroke-strong);
+  border-radius:13px;
+  background:rgba(20,27,51,.78);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  animation:rise .2s ease both;
+}
+.preview-thumb{
+  width:38px; height:38px;
+  flex:0 0 38px;
+  border-radius:9px;
+  object-fit:cover;
+  display:block;
+  background:rgba(140,160,220,.1);
+}
+.preview-icon{
+  width:38px; height:38px;
+  flex:0 0 38px;
+  border-radius:9px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,107,129,.14);
+  color:#ff8fa0;
+}
+.preview-icon svg{ width:17px; height:17px; }
+.preview-meta{ min-width:0; }
+.preview-name{
+  font-size:12px;
+  color:var(--text);
+  max-width:150px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.preview-sub{ font-size:10.5px; color:var(--text-faint); margin-top:1px; }
+.preview-x{
+  position:absolute;
+  right:5px; top:50%;
+  transform:translateY(-50%);
+  width:21px; height:21px;
+  display:grid;
+  place-items:center;
+  border:0; border-radius:6px;
+  background:transparent;
+  color:var(--text-faint);
+  cursor:pointer;
+  padding:0;
+}
+.preview-x:hover{ background:rgba(255,107,129,.18); color:var(--danger); }
+.preview-x svg{ width:12px; height:12px; }
+.preview.busy{ opacity:.6; }
+
+/* ---------- attachments inside a sent message ---------- */
+.msg-files{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-bottom:9px;
+}
+.msg-files:last-child{ margin-bottom:0; }
+.msg-thumb{
+  display:block;
+  max-width:200px;
+  max-height:200px;
+  border-radius:12px;
+  border:1px solid var(--stroke-strong);
+  object-fit:cover;
+  cursor:zoom-in;
+}
+.msg-thumb.stripped{
+  display:grid;
+  place-items:center;
+  width:150px; height:74px;
+  max-height:none;
+  cursor:default;
+  font-size:11.5px;
+  color:var(--text-faint);
+  background:rgba(6,10,22,.42);
+}
+.msg-file{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  max-width:100%;
+  min-width:0;
+  padding:8px 11px;
+  border:1px solid var(--stroke-strong);
+  border-radius:11px;
+  background:rgba(6,10,22,.42);
+  font-size:12px;
+  color:var(--text-dim);
+}
+.msg-file svg{ width:15px; height:15px; flex:0 0 15px; color:#ff8fa0; }
+.msg-file span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* ---------- drag & drop ---------- */
+.drop{
+  position:fixed;
+  inset:0;
+  z-index:110;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:22px;
+  background:rgba(7,11,24,.82);
+  backdrop-filter:blur(7px);
+  -webkit-backdrop-filter:blur(7px);
+  pointer-events:none;
+}
+.drop.show{ display:flex; }
+.drop-inner{
+  padding:30px 38px;
+  border:2px dashed rgba(109,140,255,.55);
+  border-radius:22px;
+  background:rgba(109,140,255,.09);
+  text-align:center;
+  font-size:15px;
+  font-weight:600;
+}
+.drop-inner svg{
+  width:30px; height:30px;
+  display:block;
+  margin:0 auto 11px;
+}
+
+/* ---------- image lightbox ---------- */
+.lightbox{
+  position:fixed;
+  inset:0;
+  z-index:130;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:rgba(3,6,15,.9);
+  backdrop-filter:blur(9px);
+  -webkit-backdrop-filter:blur(9px);
+  cursor:zoom-out;
+}
+.lightbox.show{ display:flex; }
+.lightbox img{
+  max-width:100%;
+  max-height:100%;
+  border-radius:14px;
+  box-shadow:var(--shadow);
+}
+
+@media (max-width:600px){
+  .preview-name{ max-width:104px; }
+  .msg-thumb{ max-width:160px; max-height:160px; }
+}
+
+/* ==========================================================================
+   Modals
+   ========================================================================== */
+.modal{
+  position:fixed;
+  inset:0;
+  z-index:90;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  background:rgba(3,6,15,.66);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  opacity:0;
+  visibility:hidden;
+  transition:opacity .2s ease, visibility .2s ease;
+}
+.modal.show{ opacity:1; visibility:visible; }
+.modal-card{
+  width:100%;
+  max-width:470px;
+  max-height:88dvh;
+  overflow-y:auto;
+  border:1px solid var(--stroke-strong);
+  border-radius:22px;
+  background:linear-gradient(180deg, #141c37, #0e1530);
+  box-shadow:var(--shadow);
+  padding:21px;
+  transform:translateY(12px) scale(.98);
+  transition:transform .22s cubic-bezier(.2,.7,.3,1);
+}
+.modal.show .modal-card{ transform:none; }
+.modal-card h3{
+  margin:0 0 5px;
+  font-size:17.5px;
+  font-weight:720;
+  letter-spacing:.01em;
+}
+.modal-card .sub{
+  margin:0 0 17px;
+  font-size:13px;
+  color:var(--text-faint);
+  line-height:1.55;
+}
+.field{ margin-bottom:14px; }
+.field label{
+  display:block;
+  font-size:11.5px;
+  font-weight:650;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+  color:var(--text-faint);
+  margin-bottom:7px;
+}
+.field input{
+  width:100%;
+  padding:11px 13px;
+  border:1px solid var(--stroke-strong);
+  border-radius:12px;
+  background:rgba(6,10,22,.6);
+  font-size:13.6px;
+}
+.field input:focus{ border-color:rgba(109,140,255,.55); }
+.field .help{
+  margin-top:6px;
+  font-size:11.6px;
+  color:var(--text-faint);
+  line-height:1.5;
+}
+.modal-actions{
+  display:flex;
+  gap:9px;
+  margin-top:19px;
+}
+.btn{
+  flex:1 1 auto;
+  padding:11px 15px;
+  border-radius:12px;
+  border:1px solid var(--stroke-strong);
+  background:rgba(140,160,220,.09);
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background .16s ease, transform .12s ease;
+}
+.btn:hover{ background:rgba(140,160,220,.17); }
+.btn:active{ transform:scale(.985); }
+.btn.primary{
+  border-color:transparent;
+  background:linear-gradient(140deg, var(--accent), var(--accent-2));
+  color:#fff;
+  box-shadow:0 7px 20px rgba(109,140,255,.3);
+}
+.btn.primary:hover{ filter:brightness(1.07); }
+
+.about-body{
+  font-size:13.6px;
+  line-height:1.72;
+  color:var(--text-dim);
+}
+.about-body p{ margin:0 0 11px; }
+.about-body strong{ color:var(--text); font-weight:650; }
+.kv{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  padding:9px 0;
+  border-bottom:1px solid var(--stroke);
+  font-size:13px;
+}
+.kv:last-of-type{ border-bottom:0; }
+.kv span:first-child{ color:var(--text-faint); }
+.kv span:last-child{
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:12.2px;
+  text-align:right;
+  overflow-wrap:anywhere;
+  min-width:0;
+}
+
+/* ---------- toast ---------- */
+.toast{
+  position:fixed;
+  left:50%;
+  bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+  transform:translate(-50%, 16px);
+  z-index:120;
+  padding:10px 17px;
+  border:1px solid var(--stroke-strong);
+  border-radius:999px;
+  background:rgba(20,28,55,.95);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  box-shadow:var(--shadow);
+  font-size:13px;
+  white-space:nowrap;
+  max-width:calc(100vw - 32px);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  opacity:0;
+  visibility:hidden;
+  transition:opacity .2s ease, transform .2s ease, visibility .2s ease;
+}
+.toast.show{ opacity:1; visibility:visible; transform:translate(-50%, 0); }
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+@media (max-width:900px){
+  .sidebar{
+    position:fixed;
+    top:0; left:0; bottom:0;
+    transform:translateX(-102%);
+    transition:transform .28s cubic-bezier(.2,.7,.3,1);
+    box-shadow:var(--shadow);
+    width:min(var(--sidebar-w), 84vw);
+    flex-basis:auto;
+  }
+  .sidebar.open{ transform:translateX(0); }
+  .menu-btn{ display:grid; }
+  .head-title h1{ font-size:15.5px; }
+}
+
+@media (max-width:600px){
+  .thread{ padding:16px 12px 10px; gap:15px; }
+  .composer-wrap{ padding:6px 12px calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .bubble{ font-size:14.4px; padding:12px 14px; max-width:100%; }
+  .empty h2{ font-size:22px; }
+  .empty p{ font-size:13.6px; }
+  .model-chip{ max-width:40vw; font-size:11.3px; padding:6px 10px; }
+  .head-title span{ display:none; }
+  .hint{ font-size:10.8px; }
+  .suggest{ margin-top:10px; }
+  .modal-card{ padding:18px; border-radius:19px; }
+}
+
+/* the keyboard-avoidance spacer for Android when the on-screen keyboard opens */
+@media (max-width:600px){
+  .app{ height:100dvh; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar" id="sidebar" aria-label="Chat navigation">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12h3l2.5-6 4 12 2.5-6h6"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">SONIC AI</div>
+        <div class="brand-sub">Assistant</div>
+      </div>
+    </div>
+
+    <button class="side-btn" id="newChatBtn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      <span>New chat</span>
+    </button>
+
+    <div class="side-label">History</div>
+    <div class="history" id="history"></div>
+
+    <div class="side-foot">
+      <button class="foot-item" id="settingsBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.36.4.66.73.86"/>
+        </svg>
+        <span>Settings</span>
+      </button>
+      <button class="foot-item" id="clearBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>
+        </svg>
+        <span>Clear this conversation</span>
+      </button>
+      <button class="foot-item" id="aboutBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M12 16v-4M12 8h.01"/>
+        </svg>
+        <span>About SONIC AI</span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="scrim" id="scrim" hidden></div>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="main">
+
+    <header class="header">
+      <button class="icon-btn menu-btn" id="menuBtn" type="button"
+              aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18M3 12h18M3 18h18"/>
+        </svg>
+      </button>
+
+      <div class="head-title">
+        <h1>SONIC AI</h1>
+        <span>Your intelligent assistant</span>
+      </div>
+
+      <div class="model-chip" id="modelChip" title="Active model">
+        <span class="model-dot" aria-hidden="true"></span>
+        <span id="modelName">Qwen3-4B-Thinking-2507</span>
+      </div>
+
+      <button class="icon-btn" id="headerSettingsBtn" type="button" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="scroll" id="scroll">
+      <div class="thread" id="thread"></div>
+      <div class="empty" id="empty">
+        <div class="empty-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#9db4ff" stroke-width="1.7"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12h3l2.5-6 4 12 2.5-6h6"/>
+          </svg>
+        </div>
+        <h2>Welcome to SONIC AI</h2>
+        <p>Ask anything and start a conversation.</p>
+        <div class="suggest" id="suggest">
+          <button type="button" data-prompt="Explain how HTTP works in simple terms.">Explain a concept</button>
+          <button type="button" data-prompt="Write a Python function that reverses a string without slicing.">Write some code</button>
+          <button type="button" data-prompt="Give me a 7-day study plan for exam preparation.">Make a plan</button>
+          <button type="button" data-prompt="Summarise the key differences between SQL and NoSQL databases.">Summarise a topic</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer-wrap">
+      <div class="composer">
+        <div class="previews" id="previews" hidden></div>
+
+        <div class="input-shell">
+          <button class="attach-btn" id="attachBtn" type="button"
+                  aria-label="Attach a photo or PDF" title="Attach photo or PDF">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.4 11.05 12.25 20.2a5.5 5.5 0 0 1-7.78-7.78l8.49-8.49a3.67 3.67
+                       0 0 1 5.19 5.19l-8.49 8.49a1.83 1.83 0 1 1-2.6-2.6l7.78-7.77"/>
+            </svg>
+          </button>
+
+          <textarea id="input" rows="1" placeholder="Message SONIC AI…"
+                    aria-label="Message SONIC AI" autocomplete="off"
+                    enterkeyhint="send"></textarea>
+          <button class="send-btn" id="sendBtn" type="button"
+                  aria-label="Send message" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4.5 12h15M13 5.5l6.5 6.5-6.5 6.5"/>
+            </svg>
+          </button>
+        </div>
+        <p class="hint">
+          <kbd>Enter</kbd> to send · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line
+        </p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ===================== SETTINGS MODAL ===================== -->
+<div class="modal" id="settingsModal" role="dialog" aria-modal="true"
+     aria-labelledby="settingsTitle">
+  <div class="modal-card">
+    <h3 id="settingsTitle">Connection settings</h3>
+    <p class="sub">
+      Credentials are stored only in this browser (localStorage) and are never
+      written into the page source.
+    </p>
+
+    <div class="field">
+      <label for="setBase">API base URL</label>
+      <input id="setBase" type="url" spellcheck="false" autocapitalize="off"
+             placeholder="https://router.bynara.id/v1" />
+    </div>
+
+    <div class="field">
+      <label for="setModel">Model</label>
+      <input id="setModel" type="text" spellcheck="false" autocapitalize="off"
+             placeholder="ggml-org/Qwen3.5-0.8B-GGUF" />
+    </div>
+
+    <div class="field">
+      <label for="setKey">API key</label>
+      <input id="setKey" type="password" spellcheck="false" autocapitalize="off"
+             autocomplete="off" placeholder="sonic-local-2026" />
+      <p class="help">
+        Sent as <code>Authorization: Bearer …</code>. Anything entered here is
+        visible to anyone using this browser — put a key here only for your own
+        private use, never on a public site.
+      </p>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn" id="settingsClose" type="button">Cancel</button>
+      <button class="btn primary" id="settingsSave" type="button">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== ABOUT MODAL ===================== -->
+<div class="modal" id="aboutModal" role="dialog" aria-modal="true"
+     aria-labelledby="aboutTitle">
+  <div class="modal-card">
+    <h3 id="aboutTitle">About SONIC AI</h3>
+    <p class="sub">A focused, private chat front end.</p>
+    <div class="about-body">
+      <p>
+        <strong>SONIC AI</strong> is a lightweight assistant interface. It talks
+        to any OpenAI-compatible <code>/chat/completions</code> endpoint, keeps
+        your conversations in this browser only, and has no analytics, no
+        tracking and no external dependencies.
+      </p>
+      <p>
+        Conversations, settings and history live in <strong>localStorage</strong>
+        on this device. Nothing is uploaded anywhere except the messages you
+        send to the model endpoint configured in Settings.
+      </p>
+    </div>
+    <div class="kv"><span>Endpoint</span><span id="aboutBase">—</span></div>
+    <div class="kv"><span>Model</span><span id="aboutModel">—</span></div>
+    <div class="kv"><span>Version</span><span>1.0.0</span></div>
+    <div class="modal-actions">
+      <button class="btn primary" id="aboutClose" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<input type="file" id="fileInput" multiple
+       accept="image/*,application/pdf,.pdf" hidden />
+
+<div class="drop" id="drop" aria-hidden="true">
+  <div class="drop-inner">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#9db4ff" stroke-width="1.7"
+         stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 16V4M7 9l5-5 5 5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+    </svg>
+    Drop photos or PDFs to attach
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true"
+     aria-label="Image preview">
+  <img id="lightboxImg" alt="" />
+</div>
+
+<script>
+"use strict";
+/* ==========================================================================
+   SONIC AI — application script
+   No frameworks, no CDN, no external libraries.
+   ========================================================================== */
+(function () {
+
+  /* ======================================================================
+     ██  CONFIGURATION  ██
+     ----------------------------------------------------------------------
+     Everything about the API connection lives here.
+
+     >>> DO NOT HARD-CODE A REAL API KEY IN THIS FILE. <<<
+     Any value written below is shipped to every visitor of this page and is
+     readable in "View source" or the browser Network tab. That is true of
+     every browser-side app — there is no way to hide a key in front-end code.
+
+     For your own private use, leave API_KEY empty and paste the key at runtime
+     in Settings (it is then kept in this browser's localStorage only).
+     For a public deployment, put a tiny server in front of the API that holds
+     the key and forwards the request — never the browser.
+     ====================================================================== */
+  var CONFIG = {
+    /* External API server
+       No trailing slash. Change it here or in Settings → Base URL.        */
+    BASE_URL: "https://router.bynara.id/v1",
+
+    /* the model id sent in the request body */
+    MODEL: "agnes-2.5-flash",
+
+    /* label shown in the header, and used as a fallback title */
+    MODEL_LABEL: "Agnes 2.5 Flash",
+
+    /* Your API key - paste it here or set it in Settings
+       Replace 'YOUR_API_KEY_HERE' with your actual API key */
+    API_KEY: "YOUR_API_KEY_HERE",
+
+    /* request behaviour */
+    TEMPERATURE: 0.7,
+    MAX_TOKENS: 512,
+
+    /* Streaming is OFF for the local build: llama.cpp streams fine, but a
+       non-streamed reply is far easier to reason about when something goes
+       wrong, and on a phone CPU the wait is dominated by generation anyway.
+       Flip to true to stream again — that path is still fully wired up.  */
+    STREAM: false,
+
+    TIMEOUT_MS: 180000,    /* 3 min — a phone CPU needs the headroom */
+    SLOW_HINT_MS: 8000     /* when to say "still generating" */
+  };
+
+  var STORE_KEYS = {
+    chats: "sonicai.chats.v1",
+    active: "sonicai.active.v1",
+    settings: "sonicai.settings.v1"
+  };
+
+  /* ======================================================================
+     STATE
+     ====================================================================== */
+  var state = {
+    chats: [],           /* [{id,title,messages:[{role,content,reasoning?}],createdAt,updatedAt}] */
+    activeId: null,
+    settings: {
+      baseUrl: CONFIG.BASE_URL,
+      model: CONFIG.MODEL,
+      apiKey: CONFIG.API_KEY
+    },
+    sending: false,
+    controller: null,
+    abortReason: null,   /* "user" | "timeout" | null */
+    attachments: []      /* files staged for the next message */
+  };
+
+  /* ======================================================================
+     TINY DOM HELPERS
+     ====================================================================== */
+  var $ = function (id) { return document.getElementById(id); };
+
+  var el = {
+    sidebar: $("sidebar"),
+    scrim: $("scrim"),
+    menuBtn: $("menuBtn"),
+    newChatBtn: $("newChatBtn"),
+    history: $("history"),
+    settingsBtn: $("settingsBtn"),
+    headerSettingsBtn: $("headerSettingsBtn"),
+    aboutBtn: $("aboutBtn"),
+    scroll: $("scroll"),
+    thread: $("thread"),
+    empty: $("empty"),
+    suggest: $("suggest"),
+    input: $("input"),
+    sendBtn: $("sendBtn"),
+    modelChip: $("modelChip"),
+    modelName: $("modelName"),
+    settingsModal: $("settingsModal"),
+    setBase: $("setBase"),
+    setModel: $("setModel"),
+    setKey: $("setKey"),
+    settingsClose: $("settingsClose"),
+    settingsSave: $("settingsSave"),
+    aboutModal: $("aboutModal"),
+    aboutClose: $("aboutClose"),
+    aboutBase: $("aboutBase"),
+    aboutModel: $("aboutModel"),
+    toast: $("toast"),
+    previews: $("previews"),
+    attachBtn: $("attachBtn"),
+    fileInput: $("fileInput"),
+    drop: $("drop"),
+    lightbox: $("lightbox"),
+    lightboxImg: $("lightboxImg"),
+    clearBtn: $("clearBtn")
+  };
+
+  /* ======================================================================
+     SAFE localStorage — never let storage errors break the UI
+     (private mode, disabled storage, quota exceeded)
+     ====================================================================== */
+  function storeGet(key) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      return raw === null ? null : JSON.parse(raw);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function storeSet(key, value) {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function storeFail() {
+    toast("Could not save locally — storage is full or blocked.");
+  }
+
+  /* ======================================================================
+     UTILITIES
+     ====================================================================== */
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  var toastTimer = null;
+  function toast(message) {
+    el.toast.textContent = message;
+    el.toast.classList.add("show");
+    if (toastTimer) { window.clearTimeout(toastTimer); }
+    toastTimer = window.setTimeout(function () {
+      el.toast.classList.remove("show");
+    }, 2400);
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        toast("Copied to clipboard");
+      }).catch(function () {
+        legacyCopy(text);
+      });
+      return;
+    }
+    legacyCopy(text);
+  }
+
+  function legacyCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "-1000px";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (err) { ok = false; }
+    document.body.removeChild(ta);
+    toast(ok ? "Copied to clipboard" : "Copy failed — select the text manually");
+  }
+
+  /* ======================================================================
+     MARKDOWN-LITE RENDERER
+     Escapes all HTML first, then applies a small, safe subset:
+     fenced code blocks, inline code, bold, and links. Everything else is
+     rendered as plain text with line breaks preserved.
+     ====================================================================== */
+  var BLOCK_RE = /@@BLOCK(\d+)@@/g;
+
+  function renderMarkdown(text) {
+    var src = String(text == null ? "" : text);
+    var escaped = escapeHtml(src);
+
+    /* 1. pull fenced code blocks out so nothing inside them is reformatted.
+          The placeholder carries no newlines, so the prose handling below
+          can never reach inside a code block.                              */
+    var blocks = [];
+    function stash(code) {
+      var idx = blocks.length;
+      blocks.push("<pre><code>" + code.replace(/\n$/, "") + "</code></pre>");
+      return "@@BLOCK" + idx + "@@";
+    }
+
+    /* closed fences first, then a still-open one (mid-stream) */
+    escaped = escaped.replace(/```[a-zA-Z0-9_+-]*\n?([\s\S]*?)```/g,
+      function (match, code) { return stash(code); });
+    escaped = escaped.replace(/```[a-zA-Z0-9_+-]*\n?([\s\S]*)$/,
+      function (match, code) { return stash(code); });
+
+    /* 2. inline formatting, touching only the remaining prose */
+    escaped = escaped.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+    escaped = escaped.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+    escaped = escaped.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      function (match, label, url) {
+        return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' +
+               label + "</a>";
+      });
+
+    /* 3. paragraphs: split on blank lines, then split each chunk around any
+          embedded code block so <pre> is never nested inside a <p>.        */
+    var out = "";
+    escaped.split(/\n{2,}/).forEach(function (chunk) {
+      if (chunk.trim() === "") { return; }
+      chunk.split(/(@@BLOCK\d+@@)/).forEach(function (piece) {
+        if (piece === "") { return; }
+        if (/^@@BLOCK\d+@@$/.test(piece)) {
+          out += piece;                    /* restored verbatim below */
+        } else {
+          var trimmed = piece.replace(/^\n+/, "").replace(/\n+$/, "");
+          if (trimmed !== "") {
+            out += "<p>" + trimmed.replace(/\n/g, "<br>") + "</p>";
+          }
+        }
+      });
+    });
+
+    /* 4. put the code blocks back */
+    return out.replace(BLOCK_RE, function (match, n) {
+      return blocks[Number(n)] || "";
+    });
+  }
+
+  var ICON_PDF =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"' +
+    ' stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>' +
+    '<path d="M14 3v5h5"/></svg>';
+
+  var ICON_IMAGE =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"' +
+    ' stroke-linecap="round" stroke-linejoin="round">' +
+    '<rect x="3" y="4" width="18" height="16" rx="2"/>' +
+    '<circle cx="8.5" cy="9.5" r="1.5"/><path d="m4 17 5-5 5 5 3-3 3 3"/></svg>';
+
+  var ICON_X =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"' +
+    ' stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+
+  /* ---- attachment limits ---------------------------------------------- */
+  var MAX_FILES = 5;
+  var MAX_FILE_BYTES = 20 * 1024 * 1024;
+  var MAX_IMAGE_DIM = 1280;      /* longest edge after downscaling */
+  var IMAGE_QUALITY = 0.85;
+  var MAX_PDF_CHARS = 12000;     /* keep the prompt inside a sane size */
+  var MAX_PDF_STREAMS = 400;
+
+  function formatBytes(n) {
+    if (typeof n !== "number" || isNaN(n)) { return ""; }
+    if (n < 1024) { return n + " B"; }
+    if (n < 1024 * 1024) { return Math.round(n / 1024) + " KB"; }
+    return (n / (1024 * 1024)).toFixed(1) + " MB";
+  }
+
+  function readAsDataURL(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(String(reader.result)); };
+      reader.onerror = function () { reject(new Error("read failed")); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /* Downscale on the phone before uploading: a 4 MB camera shot becomes a
+     couple of hundred KB, which matters on a slow connection.            */
+  function resizeImage(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+
+      function done() { URL.revokeObjectURL(url); }
+
+      img.onload = function () {
+        try {
+          var w = img.naturalWidth || img.width;
+          var h = img.naturalHeight || img.height;
+          if (!w || !h) { done(); reject(new Error("no dimensions")); return; }
+          var scale = Math.min(1, MAX_IMAGE_DIM / Math.max(w, h));
+          var cw = Math.max(1, Math.round(w * scale));
+          var ch = Math.max(1, Math.round(h * scale));
+          var canvas = document.createElement("canvas");
+          canvas.width = cw;
+          canvas.height = ch;
+          var ctx = canvas.getContext("2d");
+          if (!ctx) { done(); reject(new Error("no canvas")); return; }
+          ctx.drawImage(img, 0, 0, cw, ch);
+          var dataUrl = canvas.toDataURL("image/jpeg", IMAGE_QUALITY);
+          done();
+          resolve({ dataUrl: dataUrl, width: cw, height: ch });
+        } catch (err) {
+          done();
+          reject(err);
+        }
+      };
+      img.onerror = function () { done(); reject(new Error("decode failed")); };
+      img.src = url;
+    });
+  }
+
+  /* ----------------------------------------------------------------------
+     PDF → text, with no external library.
+
+     A PDF is a container of objects; page content lives in streams that are
+     usually FlateDecode-compressed. The browser ships DecompressionStream,
+     so we can inflate those ourselves, then scrape the text-showing
+     operators (Tj / TJ) out of the page content.
+
+     Honest limits: this reads the PDF's text layer. A scanned PDF is just
+     page images with no text layer at all, so nothing comes out — that
+     needs OCR, which is a different job entirely.
+     ---------------------------------------------------------------------- */
+
+  function bytesToLatin1(bytes) {
+    var out = [];
+    var CH = 8192;
+    for (var i = 0; i < bytes.length; i += CH) {
+      out.push(String.fromCharCode.apply(null, bytes.subarray(i, i + CH)));
+    }
+    return out.join("");
+  }
+
+  async function inflateOnce(bytes, format) {
+    try {
+      var stream = new Blob([bytes]).stream()
+        .pipeThrough(new DecompressionStream(format));
+      var buf = await new Response(stream).arrayBuffer();
+      return new Uint8Array(buf);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  /* DecompressionStream refuses a stream with any bytes after the end of
+     the compressed data, and PDF writers habitually put a newline between
+     the data and "endstream". So try the exact slice, then shave the tail
+     a byte at a time — cheaper than trusting a /Length that may be an
+     indirect reference.                                                  */
+  async function inflateBytes(bytes) {
+    if (typeof DecompressionStream === "undefined") { return null; }
+    if (!bytes || !bytes.length) { return null; }
+
+    var formats = ["deflate", "deflate-raw"];
+    for (var i = 0; i < formats.length; i++) {
+      var got = await inflateOnce(bytes, formats[i]);
+      if (got) { return got; }
+    }
+    for (var trim = 1; trim <= 4; trim++) {
+      if (bytes.length <= trim) { break; }
+      var shaved = bytes.subarray(0, bytes.length - trim);
+      for (var j = 0; j < formats.length; j++) {
+        var res = await inflateOnce(shaved, formats[j]);
+        if (res) { return res; }
+      }
+    }
+    return null;
+  }
+
+  function decodePdfString(raw) {
+    var out = "";
+    for (var i = 0; i < raw.length; i++) {
+      var ch = raw.charAt(i);
+      if (ch !== "\\") { out += ch; continue; }
+      var next = raw.charAt(++i);
+      if (next === "") { break; }
+      if (next === "n") { out += "\n"; }
+      else if (next === "r") { out += "\r"; }
+      else if (next === "t") { out += "\t"; }
+      else if (next === "b") { out += "\b"; }
+      else if (next === "f") { out += "\f"; }
+      else if (next === "(" || next === ")" || next === "\\") { out += next; }
+      else if (next >= "0" && next <= "7") {
+        var oct = next;
+        while (oct.length < 3) {
+          var peek = raw.charAt(i + 1);
+          if (peek < "0" || peek > "7") { break; }
+          oct += raw.charAt(++i);
+        }
+        out += String.fromCharCode(parseInt(oct, 8));
+      }
+      else if (next === "\n") { /* escaped newline is a continuation */ }
+      else { out += next; }
+    }
+    return out;
+  }
+
+  function hexToStr(hex) {
+    var out = "";
+    for (var i = 0; i < hex.length; i += 4) {
+      var part = hex.substr(i, 4);
+      if (part.length >= 2) { out += String.fromCharCode(parseInt(part, 16)); }
+    }
+    return out;
+  }
+
+  /* Character maps let a PDF draw text with custom glyph ids; without this
+     the extracted text comes out as gibberish for such fonts.            */
+  function parseToUnicode(content) {
+    var map = {};
+    var found = false;
+    var block, pair, range;
+
+    var charBlocks = /beginbfchar([\s\S]*?)endbfchar/g;
+    while ((block = charBlocks.exec(content)) !== null) {
+      var pairRe = /<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g;
+      while ((pair = pairRe.exec(block[1])) !== null) {
+        map[pair[1].toLowerCase()] = hexToStr(pair[2]);
+        found = true;
+      }
+    }
+
+    var rangeBlocks = /beginbfrange([\s\S]*?)endbfrange/g;
+    while ((block = rangeBlocks.exec(content)) !== null) {
+      var rangeRe = /<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g;
+      while ((range = rangeRe.exec(block[1])) !== null) {
+        var lo = parseInt(range[1], 16);
+        var hi = parseInt(range[2], 16);
+        var dst = parseInt(range[3], 16);
+        if (isNaN(lo) || isNaN(hi) || isNaN(dst)) { continue; }
+        if (hi < lo || hi - lo > 4096) { continue; }
+        for (var c = lo; c <= hi; c++) {
+          var key = c.toString(16).toLowerCase();
+          while (key.length < range[1].length) { key = "0" + key; }
+          map[key] = String.fromCharCode(dst + (c - lo));
+        }
+        found = true;
+      }
+    }
+    return found ? map : null;
+  }
+
+  function extractFromContent(content, cmap) {
+    var out = [];
+    var re = /\((?:\\.|[^\\()])*\)|<[0-9A-Fa-f\s]+>|\bT[dD*]\b|\bET\b/g;
+    var m;
+    var lastWasText = false;
+
+    while ((m = re.exec(content)) !== null) {
+      var tok = m[0];
+
+      if (tok === "Td" || tok === "TD" || tok === "T*" || tok === "ET") {
+        if (lastWasText) { out.push("\n"); }
+        lastWasText = false;
+        continue;
+      }
+
+      var text = "";
+      if (tok.charAt(0) === "(") {
+        text = decodePdfString(tok.slice(1, -1));
+      } else {
+        var hex = tok.slice(1, -1).replace(/\s+/g, "");
+        if (cmap) {
+          for (var i = 0; i + 3 < hex.length + 1; i += 4) {
+            var code = hex.substr(i, 4).toLowerCase();
+            text += cmap[code] !== undefined ? cmap[code] : "";
+          }
+        }
+        if (!text) {
+          for (var j = 0; j + 1 < hex.length; j += 2) {
+            text += String.fromCharCode(parseInt(hex.substr(j, 2), 16));
+          }
+        }
+      }
+      out.push(text);
+      lastWasText = true;
+    }
+    return out.join("");
+  }
+
+  async function extractPdfText(file) {
+    var buf = await file.arrayBuffer();
+    var bytes = new Uint8Array(buf);
+    var latin = bytesToLatin1(bytes);
+
+    /* page count is a rough scan of the object dictionaries */
+    var pages = (latin.match(/\/Type\s*\/Page[^s]/g) || []).length;
+
+    /* collect every "stream … endstream" run, remembering what precedes it */
+    var chunks = [];
+    var re = /stream\r?\n?/g;
+    var m;
+    while ((m = re.exec(latin)) !== null) {
+      if (chunks.length >= MAX_PDF_STREAMS) { break; }
+
+      /* "endstream" contains the word "stream" — without this guard the
+         scanner treats the tail of every stream as the head of the next. */
+      if (latin.substr(m.index - 3, 3) === "end") { continue; }
+
+      var start = m.index + m[0].length;
+      var end = latin.indexOf("endstream", start);
+      if (end === -1) { break; }
+
+      var head = latin.slice(Math.max(0, m.index - 400), m.index);
+
+      /* scan up to "endstream", leaving off the EOL that precedes it */
+      var stop = end;
+      while (stop > start && (bytes[stop - 1] === 10 || bytes[stop - 1] === 13 ||
+                              bytes[stop - 1] === 32)) {
+        stop--;
+      }
+
+      /* Bound the /Length lookup to THIS object's dictionary. The head
+         window reaches back 400 bytes and will otherwise pick up the
+         /Length of the previous object, truncating the stream. "obj" ends
+         the object header, so the last one before "stream" is our dict.  */
+      var dictAt = head.lastIndexOf("obj");
+      var dict = dictAt === -1 ? head : head.slice(dictAt + 3);
+
+      /* Scanning to "endstream" is the primary bound — it cannot be fooled
+         by a stale /Length. Keep a /Length slice as a fallback for the rare
+         stream whose compressed bytes contain the word "endstream".      */
+      var raw = bytes.subarray(start, stop);
+      var alt = null;
+      var lenMatch = /\/Length\s+(\d+)(\s+\d+\s+R)?/.exec(dict);
+      /* the optional group catching anything means it was "/Length 12 0 R",
+         an indirect reference whose number is not the byte count */
+      if (lenMatch && !lenMatch[2]) {
+        var declared = parseInt(lenMatch[1], 10);
+        if (declared > 0 && start + declared <= stop && declared !== raw.length) {
+          alt = bytes.subarray(start, start + declared);
+        }
+      }
+
+      chunks.push({ head: head, dict: dict, raw: raw, alt: alt });
+      /* resume past the whole keyword, not at its start */
+      re.lastIndex = end + 9;
+    }
+
+    if (!chunks.length) { return { text: "", pages: pages }; }
+
+    /* pass 1: decode each stream to a string */
+    var decoded = [];
+    for (var i = 0; i < chunks.length; i++) {
+      var text = null;
+      if (/\/FlateDecode/.test(chunks[i].dict)) {
+        var inflated = await inflateBytes(chunks[i].raw);
+        if (!inflated && chunks[i].alt) {
+          inflated = await inflateBytes(chunks[i].alt);
+        }
+        if (inflated) { text = bytesToLatin1(inflated); }
+      }
+      if (text === null) {
+        var plain = bytesToLatin1(chunks[i].raw);
+        /* an uncompressed stream is still a valid content stream */
+        text = plain;
+      }
+      decoded.push(text);
+    }
+
+    /* pass 2: character maps first, so content streams can use them */
+    var cmap = null;
+    for (var k = 0; k < decoded.length; k++) {
+      if (decoded[k].indexOf("beginbfchar") !== -1 ||
+          decoded[k].indexOf("beginbfrange") !== -1) {
+        var candidate = parseToUnicode(decoded[k]);
+        if (candidate) {
+          cmap = cmap || {};
+          for (var key in candidate) {
+            if (Object.prototype.hasOwnProperty.call(candidate, key)) {
+              cmap[key] = candidate[key];
+            }
+          }
+        }
+      }
+    }
+
+    /* pass 3: pull text out of the page content streams */
+    var parts = [];
+    for (var q = 0; q < decoded.length; q++) {
+      var body = decoded[q];
+      if (body.indexOf("BT") === -1) { continue; }
+      if (body.indexOf("Tj") === -1 && body.indexOf("TJ") === -1) { continue; }
+      var got = extractFromContent(body, cmap);
+      if (got.replace(/\s+/g, "") !== "") { parts.push(got); }
+    }
+
+    var text = parts.join("\n\n")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim();
+
+    return { text: text, pages: pages };
+  }
+
+  /* ----------------------------------------------------------------------
+     Staging attachments for the next message
+     ---------------------------------------------------------------------- */
+
+  async function addFiles(fileList) {
+    var files = Array.prototype.slice.call(fileList || []);
+    if (!files.length) { return; }
+
+    for (var i = 0; i < files.length; i++) {
+      if (state.attachments.length >= MAX_FILES) {
+        toast("Up to " + MAX_FILES + " files per message.");
+        break;
+      }
+      var file = files[i];
+      var isImage = /^image\//.test(file.type);
+      var isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
+
+      if (!isImage && !isPdf) {
+        toast("Only photos and PDFs can be attached.");
+        continue;
+      }
+      if (!file.size) {
+        toast((file.name || "That file") + " is empty.");
+        continue;
+      }
+      if (file.size > MAX_FILE_BYTES) {
+        toast((file.name || "That file") + " is over 20 MB.");
+        continue;
+      }
+
+      try {
+        if (isImage) { await stageImage(file); }
+        else { await stagePdf(file); }
+      } catch (err) {
+        toast("Could not read " + (file.name || "that file") + ".");
+        var bad = state.attachments[state.attachments.length - 1];
+        if (bad && bad.busy) { state.attachments.pop(); }
+      }
+    }
+
+    renderPreviews();
+    syncSendButton();
+  }
+
+  async function stageImage(file) {
+    var item = {
+      id: uid(), kind: "image", busy: true,
+      name: file.name || "photo.jpg",
+      size: file.size
+    };
+    state.attachments.push(item);
+    renderPreviews();
+    syncSendButton();
+
+    var res;
+    /* a small PNG keeps its full quality and transparency; everything else
+       gets downscaled to JPEG to keep the request small */
+    if (file.type === "image/png" && file.size < 500 * 1024) {
+      res = { dataUrl: await readAsDataURL(file), width: 0, height: 0 };
+    } else {
+      res = await resizeImage(file);
+    }
+
+    item.dataUrl = res.dataUrl;
+    item.width = res.width;
+    item.height = res.height;
+    item.busy = false;
+  }
+
+  async function stagePdf(file) {
+    var item = {
+      id: uid(), kind: "pdf", busy: true,
+      name: file.name || "document.pdf",
+      size: file.size
+    };
+    state.attachments.push(item);
+    renderPreviews();
+    syncSendButton();
+
+    var res = { text: "", pages: 0 };
+    try {
+      res = await extractPdfText(file);
+    } catch (err) {
+      res = { text: "", pages: 0 };
+    }
+
+    if (res.text.length > MAX_PDF_CHARS) {
+      item.text = res.text.slice(0, MAX_PDF_CHARS) +
+        "\n\n[…document truncated…]";
+    } else {
+      item.text = res.text;
+    }
+    item.pages = res.pages;
+    item.noText = item.text.replace(/\s+/g, "") === "";
+    item.busy = false;
+
+    if (item.noText) {
+      toast("No text layer in " + item.name + " — likely a scan.");
+    }
+  }
+
+  function renderPreviews() {
+    el.previews.textContent = "";
+    var list = state.attachments;
+
+    if (!list.length) {
+      el.previews.hidden = true;
+      return;
+    }
+    el.previews.hidden = false;
+
+    list.forEach(function (item) {
+      var row = document.createElement("div");
+      row.className = "preview" + (item.busy ? " busy" : "");
+
+      if (item.kind === "image" && item.dataUrl) {
+        var img = document.createElement("img");
+        img.className = "preview-thumb";
+        img.src = item.dataUrl;
+        img.alt = item.name;
+        row.appendChild(img);
+      } else {
+        var icon = document.createElement("div");
+        icon.className = "preview-icon";
+        icon.innerHTML = item.kind === "pdf" ? ICON_PDF : ICON_IMAGE;
+        row.appendChild(icon);
+      }
+
+      var meta = document.createElement("div");
+      meta.className = "preview-meta";
+
+      var name = document.createElement("div");
+      name.className = "preview-name";
+      name.textContent = item.name;
+
+      var sub = document.createElement("div");
+      sub.className = "preview-sub";
+      if (item.busy) {
+        sub.textContent = item.kind === "pdf" ? "Reading PDF…" : "Optimising…";
+      } else if (item.kind === "pdf") {
+        var bits = [];
+        if (item.pages) { bits.push(item.pages + " page" + (item.pages === 1 ? "" : "s")); }
+        bits.push(item.noText ? "no text found" : "text ready");
+        sub.textContent = bits.join(" · ");
+      } else {
+        sub.textContent = formatBytes(item.size);
+      }
+
+      meta.appendChild(name);
+      meta.appendChild(sub);
+      row.appendChild(meta);
+
+      var remove = document.createElement("button");
+      remove.className = "preview-x";
+      remove.type = "button";
+      remove.setAttribute("aria-label", "Remove " + item.name);
+      remove.dataset.remove = item.id;
+      remove.innerHTML = ICON_X;
+      row.appendChild(remove);
+
+      el.previews.appendChild(row);
+    });
+  }
+
+  function removeAttachment(id) {
+    state.attachments = state.attachments.filter(function (a) { return a.id !== id; });
+    renderPreviews();
+    syncSendButton();
+  }
+
+  function readyAttachments() {
+    return state.attachments.filter(function (a) { return !a.busy; });
+  }
+
+  function sanitizeFiles(files) {
+    if (Object.prototype.toString.call(files) !== "[object Array]") { return []; }
+    return files.filter(function (f) {
+      return f && (f.kind === "image" || f.kind === "pdf");
+    }).map(function (f) {
+      var out = {
+        kind: f.kind,
+        name: typeof f.name === "string" ? f.name : ""
+      };
+      if (typeof f.size === "number") { out.size = f.size; }
+      if (typeof f.pages === "number") { out.pages = f.pages; }
+      if (typeof f.text === "string") { out.text = f.text; }
+      if (f.noText) { out.noText = true; }
+      if (typeof f.dataUrl === "string" && f.dataUrl.indexOf("data:image/") === 0) {
+        out.dataUrl = f.dataUrl;
+      }
+      return out;
+    });
+  }
+
+  /* ======================================================================
+     CHAT STORAGE
+     ====================================================================== */
+  function loadAll() {
+    var chats = storeGet(STORE_KEYS.chats);
+    if (Object.prototype.toString.call(chats) !== "[object Array]") { chats = []; }
+
+    /* sanitise anything that came back malformed */
+    state.chats = chats.filter(function (c) {
+      return c && typeof c === "object" && typeof c.id === "string" &&
+             Object.prototype.toString.call(c.messages) === "[object Array]";
+    }).map(function (c) {
+      return {
+        id: c.id,
+        title: typeof c.title === "string" ? c.title : "New chat",
+        createdAt: c.createdAt || Date.now(),
+        updatedAt: c.updatedAt || Date.now(),
+        messages: c.messages.filter(function (m) {
+          return m && (m.role === "user" || m.role === "assistant") &&
+                 typeof m.content === "string";
+        }).map(function (m) {
+          var kept = { role: m.role, content: m.content,
+                       reasoning: typeof m.reasoning === "string" ? m.reasoning : "",
+                       files: sanitizeFiles(m.files) };
+          if (m.isError) { kept.isError = true; }
+          return kept;
+        })
+      };
+    });
+
+    var settings = storeGet(STORE_KEYS.settings);
+    if (settings && typeof settings === "object") {
+      if (typeof settings.baseUrl === "string" && settings.baseUrl) {
+        state.settings.baseUrl = settings.baseUrl;
+      }
+      if (typeof settings.model === "string" && settings.model) {
+        state.settings.model = settings.model;
+      }
+      if (typeof settings.apiKey === "string") {
+        state.settings.apiKey = settings.apiKey;
+      }
+    }
+
+    /* The previous build shipped a cloud endpoint as the default. A stored
+       copy of that default must not shadow the new local one — but a URL the
+       owner typed deliberately is left alone. Also migrate from local Termux server. */
+    var LEGACY_BASE = "https://sonic-ai-api.onrender.com/v1";
+    var LEGACY_MODEL = "Qwen/Qwen3-4B-Thinking-2507";
+    var LOCAL_TERMUX_BASE = "http://127.0.0.1:8080/v1";
+    if (state.settings.baseUrl === LEGACY_BASE) { state.settings.baseUrl = CONFIG.BASE_URL; }
+    if (state.settings.baseUrl === LOCAL_TERMUX_BASE) { state.settings.baseUrl = CONFIG.BASE_URL; }
+    if (state.settings.model === LEGACY_MODEL) { state.settings.model = CONFIG.MODEL; }
+
+    state.activeId = storeGet(STORE_KEYS.active);
+    if (!findChat(state.activeId)) {
+      state.activeId = state.chats.length ? state.chats[0].id : null;
+    }
+    applyModelLabel();
+  }
+
+  /* Images are the only thing here big enough to blow the ~5 MB storage
+     quota. If a save fails, shed the picture payloads from the oldest chats
+     first — the message text and PDF text are what actually matter.       */
+  function saveChats() {
+    if (storeSet(STORE_KEYS.chats, state.chats)) { return; }
+
+    var ordered = state.chats.slice().sort(function (a, b) {
+      return a.updatedAt - b.updatedAt;
+    });
+    for (var i = 0; i < ordered.length; i++) {
+      var shed = false;
+      ordered[i].messages.forEach(function (m) {
+        (m.files || []).forEach(function (f) {
+          if (f.dataUrl) { delete f.dataUrl; shed = true; }
+        });
+      });
+      if (shed && storeSet(STORE_KEYS.chats, state.chats)) {
+        toast("Dropped old photos to free up space.");
+        return;
+      }
+    }
+    storeFail();
+  }
+
+  function saveActive() {
+    storeSet(STORE_KEYS.active, state.activeId);
+  }
+
+  function findChat(id) {
+    if (!id) { return null; }
+    for (var i = 0; i < state.chats.length; i++) {
+      if (state.chats[i].id === id) { return state.chats[i]; }
+    }
+    return null;
+  }
+
+  function activeChat() {
+    return findChat(state.activeId);
+  }
+
+  function createChat() {
+    var chat = {
+      id: uid(),
+      title: "New chat",
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    state.chats.unshift(chat);
+    state.activeId = chat.id;
+    saveChats();
+    saveActive();
+    renderHistory();
+    renderThread();
+    return chat;
+  }
+
+  /* keeps at most 60 chats so localStorage can never grow without bound */
+  function trimChats() {
+    if (state.chats.length <= 40) { return; }
+    state.chats.sort(function (a, b) { return b.updatedAt - a.updatedAt; });
+    state.chats = state.chats.slice(0, 40);
+  }
+
+  function titleFrom(text) {
+    var clean = String(text).replace(/\s+/g, " ").trim();
+    if (!clean) { return "New chat"; }
+    return clean.length > 42 ? clean.slice(0, 42) + "…" : clean;
+  }
+
+  /* ======================================================================
+     RENDERING
+     ====================================================================== */
+  var ICON_COPY =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"' +
+    ' stroke-linecap="round" stroke-linejoin="round">' +
+    '<rect x="9" y="9" width="12" height="12" rx="2"/>' +
+    '<path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+
+  var ICON_CHECK =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"' +
+    ' stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+
+  var ICON_REDO =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"' +
+    ' stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M21 12a9 9 0 1 1-2.6-6.3"/><path d="M21 3v6h-6"/></svg>';
+
+  function renderHistory() {
+    el.history.textContent = "";
+
+    if (!state.chats.length) {
+      var empty = document.createElement("div");
+      empty.className = "history-empty";
+      empty.textContent = "No saved chats yet.";
+      el.history.appendChild(empty);
+      return;
+    }
+
+    var sorted = state.chats.slice().sort(function (a, b) {
+      return b.updatedAt - a.updatedAt;
+    });
+
+    sorted.forEach(function (chat) {
+      var item = document.createElement("div");
+      item.className = "hist-item" + (chat.id === state.activeId ? " active" : "");
+      item.setAttribute("role", "button");
+      item.setAttribute("tabindex", "0");
+      item.dataset.id = chat.id;
+
+      var icon = document.createElement("span");
+      icon.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+        ' stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/></svg>';
+      item.appendChild(icon.firstChild);
+
+      var title = document.createElement("span");
+      title.className = "hist-title";
+      title.textContent = chat.title;
+      item.appendChild(title);
+
+      var del = document.createElement("button");
+      del.className = "hist-del";
+      del.type = "button";
+      del.setAttribute("aria-label", "Delete chat");
+      del.dataset.del = chat.id;
+      del.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+        ' stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>';
+      item.appendChild(del);
+
+      el.history.appendChild(item);
+    });
+  }
+
+  function renderThread() {
+    var chat = activeChat();
+    el.thread.textContent = "";
+
+    if (!chat || !chat.messages.length) {
+      el.empty.hidden = false;
+      el.thread.hidden = true;
+      return;
+    }
+
+    el.empty.hidden = true;
+    el.thread.hidden = false;
+
+    chat.messages.forEach(function (message, index) {
+      el.thread.appendChild(buildMessage(message, index));
+    });
+  }
+
+  function buildMessage(message, index) {
+    var wrap = document.createElement("div");
+    wrap.className = "msg " + (message.role === "user" ? "user" : "ai");
+    wrap.dataset.index = String(index);
+
+    var bubble = document.createElement("div");
+    bubble.className = "bubble";
+
+    if (message.role === "assistant" && message.reasoning) {
+      var think = document.createElement("details");
+      think.className = "think";
+      var summary = document.createElement("summary");
+      summary.textContent = "Reasoning";
+      var body = document.createElement("div");
+      body.className = "think-body";
+      body.textContent = message.reasoning;
+      think.appendChild(summary);
+      think.appendChild(body);
+      bubble.appendChild(think);
+    }
+
+    if (message.role === "user" && message.files && message.files.length) {
+      bubble.appendChild(buildFileRow(message.files));
+    }
+
+    var content = document.createElement("div");
+    content.className = "msg-content";
+    if (message.role === "user") {
+      content.textContent = message.content;
+      content.style.whiteSpace = "pre-wrap";
+    } else {
+      content.innerHTML = renderMarkdown(message.content);
+    }
+    if (message.role === "user" && message.content === "") {
+      content.hidden = true;
+    }
+    bubble.appendChild(content);
+    wrap.appendChild(bubble);
+
+    if (message.role === "assistant") {
+      wrap.appendChild(buildActions(index));
+    }
+    return wrap;
+  }
+
+  function buildFileRow(files) {
+    var row = document.createElement("div");
+    row.className = "msg-files";
+
+    files.forEach(function (f) {
+      if (f.kind === "image") {
+        if (f.dataUrl) {
+          var img = document.createElement("img");
+          img.className = "msg-thumb";
+          img.src = f.dataUrl;
+          img.alt = f.name || "attached photo";
+          img.dataset.zoom = f.dataUrl;
+          row.appendChild(img);
+        } else {
+          var gone = document.createElement("div");
+          gone.className = "msg-thumb stripped";
+          gone.textContent = "photo dropped";
+          row.appendChild(gone);
+        }
+        return;
+      }
+
+      var chip = document.createElement("div");
+      chip.className = "msg-file";
+      chip.innerHTML = ICON_PDF + "<span></span>";
+      var label = f.name || "document.pdf";
+      if (f.noText) { label += " · no text found"; }
+      else if (f.pages) { label += " · " + f.pages + "p"; }
+      chip.querySelector("span").textContent = label;
+      row.appendChild(chip);
+    });
+
+    return row;
+  }
+
+  function buildActions(index) {
+    var row = document.createElement("div");
+    row.className = "msg-actions";
+
+    var copy = document.createElement("button");
+    copy.className = "act";
+    copy.type = "button";
+    copy.dataset.copy = String(index);
+    copy.innerHTML = ICON_COPY + "<span>Copy</span>";
+    row.appendChild(copy);
+
+    var redo = document.createElement("button");
+    redo.className = "act";
+    redo.type = "button";
+    redo.dataset.redo = String(index);
+    redo.innerHTML = ICON_REDO + "<span>Regenerate</span>";
+    row.appendChild(redo);
+
+    return row;
+  }
+
+  function nearBottom() {
+    var gap = el.scroll.scrollHeight - el.scroll.scrollTop - el.scroll.clientHeight;
+    return gap < 140;
+  }
+
+  function scrollToEnd(force) {
+    if (force || nearBottom()) {
+      el.scroll.scrollTop = el.scroll.scrollHeight;
+    }
+  }
+
+  /* ======================================================================
+     SENDING
+     ====================================================================== */
+  function endpoint() {
+    // Always use /api - Vercel will route it correctly
+    return "/api";
+  }
+
+  function setBusy(busy) {
+    state.sending = busy;
+    el.modelChip.classList.toggle("busy", busy);
+    syncSendButton();
+  }
+
+  function syncSendButton() {
+    if (state.sending) {
+      el.sendBtn.classList.add("stop");
+      el.sendBtn.disabled = false;
+      el.sendBtn.setAttribute("aria-label", "Stop generating");
+      el.sendBtn.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" ' +
+        'width="12" height="12" rx="2.4"/></svg>';
+      return;
+    }
+    el.sendBtn.classList.remove("stop");
+    el.sendBtn.disabled =
+      el.input.value.trim().length === 0 && readyAttachments().length === 0;
+    el.sendBtn.setAttribute("aria-label", "Send message");
+    el.sendBtn.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"' +
+      ' stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M4.5 12h15M13 5.5l6.5 6.5-6.5 6.5"/></svg>';
+  }
+
+  function autoGrow() {
+    el.input.style.height = "auto";
+    var next = Math.min(el.input.scrollHeight, 190);
+    el.input.style.height = next + "px";
+  }
+
+  function handleSubmit() {
+    if (state.sending) { stopGeneration(); return; }
+    var text = el.input.value.trim();
+    if (!text && readyAttachments().length === 0) { return; }
+    if (state.attachments.length > readyAttachments().length) {
+      toast("Still reading the attachment…");
+      return;
+    }
+    send(text);
+  }
+
+  function stopGeneration() {
+    if (!state.controller) { return; }
+    state.abortReason = "user";
+    state.controller.abort();
+  }
+
+  async function send(text) {
+    var chat = activeChat() || createChat();
+
+    var files = readyAttachments().map(function (a) {
+      if (a.kind === "image") {
+        return { kind: "image", name: a.name, size: a.size,
+                 dataUrl: a.dataUrl, width: a.width, height: a.height };
+      }
+      return { kind: "pdf", name: a.name, size: a.size,
+               pages: a.pages, text: a.text, noText: !!a.noText };
+    });
+
+    chat.messages.push({ role: "user", content: text, reasoning: "", files: files });
+    if (chat.title === "New chat") {
+      chat.title = titleFrom(text || (files[0] && files[0].name) || "");
+    }
+    chat.updatedAt = Date.now();
+    trimChats();
+    saveChats();
+    renderHistory();
+    renderThread();
+
+    state.attachments = [];
+    renderPreviews();
+    el.input.value = "";
+    autoGrow();
+    syncSendButton();
+    scrollToEnd(true);
+
+    await requestCompletion(chat);
+  }
+
+  async function requestCompletion(chat) {
+    if (!state.settings.baseUrl) {
+      appendError(chat, "No API base URL is configured. Open Settings to set one.");
+      return;
+    }
+
+    var placeholder = { role: "assistant", content: "", reasoning: "" };
+    chat.messages.push(placeholder);
+    renderThread();
+
+    var node = el.thread.querySelector(
+      '.msg[data-index="' + (chat.messages.length - 1) + '"]'
+    );
+    var contentNode = node ? node.querySelector(".msg-content") : null;
+    if (node && contentNode) {
+      var typing = document.createElement("div");
+      typing.className = "typing";
+      typing.innerHTML =
+        '<div class="dots"><span></span><span></span><span></span></div>' +
+        '<span class="typing-note">SONIC AI is thinking…</span>';
+      contentNode.appendChild(typing);
+    }
+
+    setBusy(true);
+    state.abortReason = null;
+    var controller = new AbortController();
+    state.controller = controller;
+
+    var timedOut = false;
+    var timer = window.setTimeout(function () {
+      timedOut = true;
+      state.abortReason = "timeout";
+      controller.abort();
+    }, CONFIG.TIMEOUT_MS);
+
+    var slowTimer = window.setTimeout(function () {
+      var note = node ? node.querySelector(".typing-note") : null;
+      if (note && state.sending) {
+        note.textContent = "Generating on the phone\u2019s CPU \u2014 this can take a moment\u2026";
+      }
+    }, CONFIG.SLOW_HINT_MS);
+
+    var full = "";
+    var reasoning = "";
+
+    /* Re-rendering markdown on every delta is O(n^2). Coalesce to one paint
+       per animation frame so a long reply stays smooth on a phone. The
+       cursor only ever appears mid-stream: once the reply lands, renderThread
+       redraws the message from the finished text and it disappears.        */
+    var paintQueued = false;
+
+    function paintNow() {
+      paintQueued = false;
+      if (!contentNode) { return; }
+      var html = renderMarkdown(full);
+      if (state.sending) { html += '<span class="cursor"></span>'; }
+      contentNode.innerHTML = html;
+      scrollToEnd(false);
+    }
+
+    function queuePaint() {
+      if (paintQueued) { return; }
+      paintQueued = true;
+      window.requestAnimationFrame(paintNow);
+    }
+
+    try {
+      var payload = {
+        model: state.settings.model || CONFIG.MODEL,
+        messages: buildPayloadMessages(chat.messages),
+        temperature: CONFIG.TEMPERATURE,
+        max_tokens: CONFIG.MAX_TOKENS,
+        stream: CONFIG.STREAM
+      };
+
+      var headers = { "Content-Type": "application/json" };
+      // API key is handled by backend server - don't send from frontend
+      // var key = String(state.settings.apiKey || "").trim();
+      // if (key) { headers["Authorization"] = "Bearer " + key; }
+
+      var response = await fetch(endpoint(), {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        throw new ApiError(await describeHttpError(response), response.status);
+      }
+
+      var type = response.headers.get("content-type") || "";
+
+      if (CONFIG.STREAM && response.body &&
+          type.indexOf("text/event-stream") !== -1) {
+        await readStream(response.body, function (delta, thought) {
+          if (thought) { reasoning += thought; }
+          if (delta) {
+            full += delta;
+            queuePaint();
+          }
+        });
+        /* an SSE stream that yielded nothing → handled as empty below */
+      } else {
+        var parsed = await readJsonResponse(response);
+        full = parsed.content;
+        reasoning = parsed.reasoning;
+      }
+
+      window.clearTimeout(timer);
+      window.clearTimeout(slowTimer);
+
+      if (!full && !reasoning) {
+        throw new ApiError(
+          "The model returned an empty response. Try again, or send a shorter message.",
+          0
+        );
+      }
+
+      /* A thinking model can spend the whole token budget reasoning and
+         return no answer at all. Say exactly that instead of "no response",
+         and keep the reasoning so it is visible why. */
+      if (!full && reasoning) {
+        chat.messages.pop();
+        appendError(chat,
+          "The model used its token budget for reasoning. Try a shorter " +
+          "prompt or increase Max Tokens.", reasoning);
+        return;
+      }
+
+      placeholder.content = full;
+      placeholder.reasoning = reasoning;
+      chat.updatedAt = Date.now();
+      saveChats();
+      renderThread();
+      scrollToEnd(false);
+
+    } catch (err) {
+      window.clearTimeout(timer);
+      window.clearTimeout(slowTimer);
+
+      var stoppedByUser = state.abortReason === "user" && !timedOut;
+
+      if (stoppedByUser) {
+        /* keep whatever was already streamed in */
+        if (full || reasoning) {
+          placeholder.content = full || "(stopped)";
+          placeholder.reasoning = reasoning;
+        } else {
+          chat.messages.pop();
+        }
+        chat.updatedAt = Date.now();
+        saveChats();
+        renderThread();
+        toast("Generation stopped");
+        return;
+      }
+
+      if (full || reasoning) {
+        placeholder.content = full;
+        placeholder.reasoning = reasoning;
+        chat.updatedAt = Date.now();
+        saveChats();
+        renderThread();
+        toast(timedOut ? "Timed out — partial reply kept" : "Reply was cut short");
+        return;
+      }
+
+      chat.messages.pop();
+      appendError(chat, describeError(err, timedOut));
+
+    } finally {
+      state.controller = null;
+      setBusy(false);
+      scrollToEnd(false);
+      el.input.focus();
+    }
+  }
+
+  /* messages sent to the model: system prompt + the whole visible history */
+  function buildPayloadMessages(messages) {
+    var out = [{
+      role: "system",
+      content: "You are SONIC AI, a helpful, accurate and concise assistant. " +
+               "Answer clearly and format code in fenced blocks."
+    }];
+
+    messages.forEach(function (m) {
+      /* UI error bubbles are not part of the conversation */
+      if (m.isError) { return; }
+
+      var files = m.files || [];
+      var hasImages = files.some(function (f) {
+        return f.kind === "image" && f.dataUrl;
+      });
+
+      /* plain text turn — also the path taken by the in-flight placeholder */
+      if (m.role !== "user" || !hasImages) {
+        var text = m.content || "";
+        var pdfText = files.filter(function (f) {
+          return f.kind === "pdf" && f.text;
+        }).map(function (f) {
+          return "--- attached PDF: " + f.name + " ---\n" + f.text;
+        }).join("\n\n");
+
+        if (pdfText) { text = text ? text + "\n\n" + pdfText : pdfText; }
+        if (!text) { return; }
+        out.push({ role: m.role, content: text });
+        return;
+      }
+
+      /* a turn carrying images goes out as content parts, which is what
+         every OpenAI-compatible vision endpoint expects */
+      var parts = [];
+      var caption = m.content || "";
+
+      files.forEach(function (f) {
+        if (f.kind === "pdf" && f.text) {
+          caption += (caption ? "\n\n" : "") +
+            "--- attached PDF: " + f.name + " ---\n" + f.text;
+        }
+      });
+
+      if (caption) { parts.push({ type: "text", text: caption }); }
+      files.forEach(function (f) {
+        if (f.kind === "image" && f.dataUrl) {
+          parts.push({ type: "image_url", image_url: { url: f.dataUrl } });
+        }
+      });
+
+      out.push({ role: "user", content: parts });
+    });
+
+    return out;
+  }
+
+  function ApiError(message, status) {
+    this.name = "ApiError";
+    this.message = message;
+    this.status = status || 0;
+  }
+  ApiError.prototype = Object.create(Error.prototype);
+
+  async function describeHttpError(response) {
+    var detail = "";
+    try {
+      var raw = await response.text();
+      if (raw) {
+        try {
+          var parsed = JSON.parse(raw);
+          detail =
+            (parsed && parsed.error &&
+             (parsed.error.message || parsed.error.type)) ||
+            (parsed && parsed.message) || "";
+        } catch (parseErr) {
+          detail = raw.slice(0, 300);
+        }
+      }
+    } catch (readErr) {
+      detail = "";
+    }
+
+    var base;
+    if (response.status === 401 || response.status === 403) {
+      base = "API key problem (" + response.status +
+             "). The key in Settings must match the one llama-server was " +
+             "started with.";
+    } else if (response.status === 404) {
+      base = "Endpoint not found (404). The Base URL is wrong — it should be " +
+             "https://router.bynara.id/v1, and the app calls " +
+             "{Base URL}/chat/completions.";
+    } else if (response.status === 429) {
+      base = "The local server is busy (429). Wait a moment and try again.";
+    } else if (response.status >= 500) {
+      base = "The local model or server returned an error (" + response.status +
+             "). Check the llama-server output in Termux — the model may have " +
+             "run out of memory, or the context may be full.";
+    } else {
+      base = "Request failed with status " + response.status + ".";
+    }
+    return detail ? base + "\n\n" + detail : base;
+  }
+
+  function describeError(err, timedOut) {
+    if (timedOut) {
+      /* On a phone CPU a long wait is normal — never call this "offline".
+         The model may well still be generating when the timer fires.      */
+      return "The request reached the " +
+             Math.round(CONFIG.TIMEOUT_MS / 1000) +
+             " second limit and was stopped. The model may still be " +
+             "generating on the phone's CPU — run the same prompt again, or " +
+             "lower Max Tokens so it finishes sooner.\n\n" +
+             "If it never finishes, check the llama-server output in Termux.";
+    }
+    if (err && err.name === "AbortError") {
+      return "The request was cancelled.";
+    }
+    if (err && err.name === "ApiError") {
+      return err.message;
+    }
+    if (err instanceof TypeError) {
+      return "Cannot connect to the API server. Check that:\n" +
+             "1. Base URL in Settings is correct (https://router.bynara.id/v1)\n" +
+             "2. API Key is set correctly in Settings\n" +
+             "3. You have an active internet connection\n\n" +
+             "If the problem persists, check the API service status.";
+    }
+    return "Something went wrong: " + ((err && err.message) || String(err));
+  }
+
+  /* Returns { content, reasoning }. The two are kept strictly apart: only
+     content is ever the assistant's answer, reasoning is shown separately
+     and collapsed. llama.cpp reports them as message.content and
+     message.reasoning_content.                                          */
+  async function readJsonResponse(response) {
+    var data;
+    try {
+      data = await response.json();
+    } catch (err) {
+      throw new ApiError(
+        "The server sent a response that is not valid JSON. Check the " +
+        "llama-server output in Termux.", 0);
+    }
+
+    if (data && data.error) {
+      var detail = data.error.message || data.error.type || "";
+      throw new ApiError(
+        "The local server rejected the request." + (detail ? "\n\n" + detail : ""),
+        response.status || 0);
+    }
+
+    var choice = data && data.choices && data.choices[0];
+    if (!choice) {
+      throw new ApiError("The response contained no choices.", 0);
+    }
+
+    var message = choice.message || {};
+    var text = message.content;
+
+    if (Array.isArray(text)) {                  /* some servers send parts */
+      text = text.map(function (part) {
+        return typeof part === "string" ? part : (part && part.text) || "";
+      }).join("");
+    }
+
+    return {
+      content: typeof text === "string" ? text : "",
+      reasoning: typeof message.reasoning_content === "string"
+        ? message.reasoning_content : ""
+    };
+  }
+
+  async function readStream(body, onDelta) {
+    var reader = body.getReader();
+    var decoder = new TextDecoder("utf-8");
+    var buffer = "";
+
+    while (true) {
+      var chunk = await reader.read();
+      if (chunk.done) { break; }
+      buffer += decoder.decode(chunk.value, { stream: true });
+
+      var lines = buffer.split("\n");
+      buffer = lines.pop();                    /* keep the partial last line */
+
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line || line.indexOf("data:") !== 0) { continue; }
+        var payload = line.slice(5).trim();
+        if (payload === "[DONE]") { return; }
+        try {
+          var json = JSON.parse(payload);
+          var choice = json.choices && json.choices[0];
+          if (!choice) { continue; }
+          var delta = choice.delta || choice.message || {};
+          onDelta(delta.content || "", delta.reasoning_content || "");
+        } catch (parseErr) {
+          /* a malformed keep-alive or comment line — skip it */
+        }
+      }
+    }
+  }
+
+  function appendError(chat, message, reasoning) {
+    /* isError keeps this out of the conversation sent back to the model —
+       a UI error is not something the assistant "said" */
+    chat.messages.push({
+      role: "assistant",
+      content: message,
+      reasoning: reasoning || "",
+      isError: true
+    });
+    chat.updatedAt = Date.now();
+    saveChats();
+    renderThread();
+
+    var nodes = el.thread.querySelectorAll(".msg.ai");
+    var last = nodes[nodes.length - 1];
+    if (last) { last.classList.add("error"); }
+    scrollToEnd(false);
+  }
+
+  /* ======================================================================
+     REGENERATE
+     ====================================================================== */
+  function regenerate(index) {
+    if (state.sending) { return; }
+    var chat = activeChat();
+    if (!chat) { return; }
+
+    /* drop the target assistant reply and everything after it */
+    if (typeof index === "number" && index >= 0 && index < chat.messages.length) {
+      chat.messages = chat.messages.slice(0, index);
+    } else {
+      /* default: the last assistant reply */
+      for (var i = chat.messages.length - 1; i >= 0; i--) {
+        if (chat.messages[i].role === "assistant") {
+          chat.messages = chat.messages.slice(0, i);
+          break;
+        }
+      }
+    }
+
+    if (!chat.messages.length) {
+      renderThread();
+      return;
+    }
+
+    chat.updatedAt = Date.now();
+    saveChats();
+    renderThread();
+    scrollToEnd(true);
+    requestCompletion(chat);
+  }
+
+  /* ======================================================================
+     MODALS
+     ====================================================================== */
+  function openModal(modal) {
+    modal.classList.add("show");
+    closeSidebar();
+  }
+
+  function closeModal(modal) {
+    modal.classList.remove("show");
+  }
+
+  function openSettings() {
+    el.setBase.value = state.settings.baseUrl || "";
+    el.setModel.value = state.settings.model || "";
+    el.setKey.value = state.settings.apiKey || "";
+    openModal(el.settingsModal);
+  }
+
+  function saveSettings() {
+    state.settings.baseUrl = el.setBase.value.trim() || CONFIG.BASE_URL;
+    state.settings.model = el.setModel.value.trim() || CONFIG.MODEL;
+    state.settings.apiKey = el.setKey.value.trim();
+
+    if (storeSet(STORE_KEYS.settings, state.settings)) {
+      toast("Settings saved");
+    } else {
+      storeFail();
+    }
+    applyModelLabel();
+    closeModal(el.settingsModal);
+  }
+
+  function applyModelLabel() {
+    var model = state.settings.model || CONFIG.MODEL;
+    var short = model.indexOf("/") !== -1 ?
+      model.split("/").pop() : model;
+    el.modelName.textContent = short || CONFIG.MODEL_LABEL;
+  }
+
+  function openAbout() {
+    el.aboutBase.textContent = state.settings.baseUrl || "—";
+    el.aboutModel.textContent = state.settings.model || "—";
+    openModal(el.aboutModal);
+  }
+
+  /* ======================================================================
+     SIDEBAR (mobile)
+     ====================================================================== */
+  function openSidebar() {
+    el.sidebar.classList.add("open");
+    el.scrim.hidden = false;
+    /* next frame so the transition actually runs */
+    window.requestAnimationFrame(function () {
+      el.scrim.classList.add("show");
+    });
+    el.menuBtn.setAttribute("aria-expanded", "true");
+  }
+
+  function closeSidebar() {
+    if (!el.sidebar.classList.contains("open")) { return; }
+    el.sidebar.classList.remove("open");
+    el.scrim.classList.remove("show");
+    window.setTimeout(function () {
+      if (!el.sidebar.classList.contains("open")) { el.scrim.hidden = true; }
+    }, 240);
+    el.menuBtn.setAttribute("aria-expanded", "false");
+  }
+
+  function toggleSidebar() {
+    if (el.sidebar.classList.contains("open")) { closeSidebar(); }
+    else { openSidebar(); }
+  }
+
+  /* ======================================================================
+     EVENT WIRING — every listener is attached exactly once, here
+     ====================================================================== */
+  function bind() {
+    /* sidebar */
+    el.menuBtn.addEventListener("click", toggleSidebar);
+    el.scrim.addEventListener("click", closeSidebar);
+
+    el.newChatBtn.addEventListener("click", function () {
+      /* reuse the active chat if it is already empty and untouched */
+      var current = activeChat();
+      if (current && current.messages.length === 0) {
+        closeSidebar();
+        el.input.focus();
+        return;
+      }
+      createChat();
+      closeSidebar();
+      el.input.focus();
+    });
+
+    el.settingsBtn.addEventListener("click", openSettings);
+    el.headerSettingsBtn.addEventListener("click", openSettings);
+    el.aboutBtn.addEventListener("click", openAbout);
+
+    el.settingsClose.addEventListener("click", function () {
+      closeModal(el.settingsModal);
+    });
+    el.settingsSave.addEventListener("click", saveSettings);
+    el.aboutClose.addEventListener("click", function () {
+      closeModal(el.aboutModal);
+    });
+
+    /* click on the dark area closes a modal */
+    [el.settingsModal, el.aboutModal].forEach(function (modal) {
+      modal.addEventListener("click", function (event) {
+        if (event.target === modal) { closeModal(modal); }
+      });
+    });
+
+    /* history: one delegated listener for open + delete */
+    el.history.addEventListener("click", function (event) {
+      var delBtn = event.target.closest("[data-del]");
+      if (delBtn) {
+        event.stopPropagation();
+        deleteChat(delBtn.dataset.del);
+        return;
+      }
+      var item = event.target.closest(".hist-item");
+      if (!item) { return; }
+      selectChat(item.dataset.id);
+    });
+
+    el.history.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter" && event.key !== " ") { return; }
+      var item = event.target.closest(".hist-item");
+      if (!item) { return; }
+      event.preventDefault();
+      selectChat(item.dataset.id);
+    });
+
+    /* message actions: one delegated listener for copy + regenerate */
+    el.thread.addEventListener("click", function (event) {
+      var zoom = event.target.closest("[data-zoom]");
+      if (zoom) { openLightbox(zoom.dataset.zoom); return; }
+
+      var copyBtn = event.target.closest("[data-copy]");
+      if (copyBtn) {
+        var ci = Number(copyBtn.dataset.copy);
+        var chatForCopy = activeChat();
+        if (chatForCopy && chatForCopy.messages[ci]) {
+          copyText(chatForCopy.messages[ci].content);
+          copyBtn.classList.add("done");
+          copyBtn.innerHTML = ICON_CHECK + "<span>Copied</span>";
+          window.setTimeout(function () {
+            copyBtn.classList.remove("done");
+            copyBtn.innerHTML = ICON_COPY + "<span>Copy</span>";
+          }, 1500);
+        }
+        return;
+      }
+      var redoBtn = event.target.closest("[data-redo]");
+      if (redoBtn) {
+        regenerate(Number(redoBtn.dataset.redo));
+      }
+    });
+
+    /* suggestion chips */
+    el.suggest.addEventListener("click", function (event) {
+      var chip = event.target.closest("[data-prompt]");
+      if (!chip) { return; }
+      el.input.value = chip.dataset.prompt;
+      autoGrow();
+      syncSendButton();
+      el.input.focus();
+    });
+
+    /* attachments */
+    el.attachBtn.addEventListener("click", function () {
+      if (state.sending) { return; }
+      el.fileInput.click();
+    });
+
+    el.fileInput.addEventListener("change", function () {
+      if (el.fileInput.files && el.fileInput.files.length) {
+        addFiles(el.fileInput.files);
+      }
+      el.fileInput.value = "";        /* so the same file can be re-picked */
+    });
+
+    el.previews.addEventListener("click", function (event) {
+      var btn = event.target.closest("[data-remove]");
+      if (btn) { removeAttachment(btn.dataset.remove); }
+    });
+
+    el.clearBtn.addEventListener("click", clearConversation);
+
+    el.lightbox.addEventListener("click", closeLightbox);
+
+    /* paste a screenshot straight into the composer */
+    document.addEventListener("paste", function (event) {
+      var items = event.clipboardData && event.clipboardData.items;
+      if (!items) { return; }
+      var picked = [];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].kind === "file") {
+          var file = items[i].getAsFile();
+          if (file) { picked.push(file); }
+        }
+      }
+      if (picked.length) {
+        event.preventDefault();
+        addFiles(picked);
+      }
+    });
+
+    /* drag & drop anywhere on the page */
+    var dragDepth = 0;
+
+    window.addEventListener("dragenter", function (event) {
+      if (!event.dataTransfer) { return; }
+      var types = event.dataTransfer.types;
+      if (!types || Array.prototype.indexOf.call(types, "Files") === -1) { return; }
+      event.preventDefault();
+      dragDepth++;
+      el.drop.classList.add("show");
+    });
+
+    window.addEventListener("dragover", function (event) {
+      if (!event.dataTransfer) { return; }
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+    });
+
+    window.addEventListener("dragleave", function () {
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) { el.drop.classList.remove("show"); }
+    });
+
+    window.addEventListener("drop", function (event) {
+      if (!event.dataTransfer) { return; }
+      event.preventDefault();
+      dragDepth = 0;
+      el.drop.classList.remove("show");
+      if (event.dataTransfer.files && event.dataTransfer.files.length) {
+        addFiles(event.dataTransfer.files);
+      }
+    });
+
+    /* composer */
+    el.input.addEventListener("input", function () {
+      autoGrow();
+      syncSendButton();
+    });
+
+    el.input.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+        event.preventDefault();
+        handleSubmit();
+      }
+    });
+
+    el.sendBtn.addEventListener("click", handleSubmit);
+
+    /* global keys */
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        if (el.lightbox.classList.contains("show")) { closeLightbox(); return; }
+        closeModal(el.settingsModal);
+        closeModal(el.aboutModal);
+        closeSidebar();
+      }
+      /* Ctrl/Cmd + K → new chat */
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        createChat();
+        el.input.focus();
+      }
+    });
+
+    /* keep the composer above the Android keyboard */
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", function () {
+        scrollToEnd(false);
+      });
+    }
+
+    /* another tab changed the data — reload it instead of overwriting */
+    window.addEventListener("storage", function (event) {
+      if (event.key === STORE_KEYS.chats || event.key === STORE_KEYS.active) {
+        var keepId = state.activeId;
+        loadAll();
+        if (!findChat(keepId)) { state.activeId = keepId; }
+        renderHistory();
+        renderThread();
+      }
+    });
+
+    window.addEventListener("beforeunload", function () {
+      saveChats();
+      saveActive();
+    });
+  }
+
+  function clearConversation() {
+    var chat = activeChat();
+    if (!chat) { closeSidebar(); return; }
+    if (!chat.messages.length) {
+      toast("This conversation is already empty.");
+      closeSidebar();
+      return;
+    }
+    if (!window.confirm("Clear every message in this conversation?")) { return; }
+
+    chat.messages = [];
+    chat.title = "New chat";
+    chat.updatedAt = Date.now();
+    state.attachments = [];
+    renderPreviews();
+    saveChats();
+    renderHistory();
+    renderThread();
+    syncSendButton();
+    closeSidebar();
+    toast("Conversation cleared");
+  }
+
+  function openLightbox(src) {
+    el.lightboxImg.src = src;
+    el.lightbox.classList.add("show");
+  }
+
+  function closeLightbox() {
+    el.lightbox.classList.remove("show");
+    el.lightboxImg.removeAttribute("src");
+  }
+
+  function selectChat(id) {
+    if (!findChat(id)) { return; }
+    if (state.attachments.length) {
+      state.attachments = [];
+      renderPreviews();
+    }
+    state.activeId = id;
+    saveActive();
+    renderHistory();
+    renderThread();
+    scrollToEnd(true);
+    closeSidebar();
+    el.input.focus();
+  }
+
+  function deleteChat(id) {
+    var chat = findChat(id);
+    if (!chat) { return; }
+    if (chat.messages.length) {
+      var ok = window.confirm("Delete this chat?");
+      if (!ok) { return; }
+    }
+    state.chats = state.chats.filter(function (c) { return c.id !== id; });
+    if (state.activeId === id) {
+      state.activeId = state.chats.length ? state.chats[0].id : null;
+    }
+    saveChats();
+    saveActive();
+    renderHistory();
+    renderThread();
+    toast("Chat deleted");
+  }
+
+  /* ======================================================================
+     BOOT
+     ====================================================================== */
+  function init() {
+    loadAll();
+    bind();
+    renderHistory();
+    renderThread();
+    renderPreviews();
+    autoGrow();
+    syncSendButton();
+    scrollToEnd(true);
+    if (window.matchMedia("(min-width: 901px)").matches) {
+      el.input.focus();
+    }
+  }
+
+  /* the script is at the end of <body>, but guard anyway */
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+
+})();
+</script>
+</body>
+</html>
