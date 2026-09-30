@@ -1,14 +1,10 @@
 {
-  "name": "sonic-ai-backend",
-  "version": "1.0.0",
+  "name": "sonic-ai",
+  "version": "2.0.0",
+  "private": true,
+  "description": "SONIC AI — static frontend (index.html) plus one Vercel serverless proxy (api.js).",
   "main": "api.js",
-  "scripts": {
-    "start": "node api.js",
-    "dev": "node api.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "axios": "^1.6.2"
+  "engines": {
+    "node": "22.x"
   }
 }
